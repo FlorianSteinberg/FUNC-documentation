@@ -4,6 +4,8 @@
 \usepackage[ngerman]{babel}
 \usepackage{xspace,listings,color}
 \usepackage[colorlinks=true]{hyperref}
+\usepackage{amsmath, amssymb}
+
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
 \definecolor{mauve}{rgb}{0.58,0,0.82}
@@ -29,8 +31,7 @@
 	tabsize=2,
 	belowskip=.25cm}
 
-\begin{document}
-\tableofcontents
+\DeclareMathOperator{\NN}{\ensuremath{\mathbb{N}}\xspace}
 
 \newcommand{\irram}{\texttt{iRRAM}\xspace}
 \newcommand{\irrams}{\texttt{iRRAM}s\xspace}
@@ -39,6 +40,8 @@
 \newcommand{\ir}[1]{\texttt{#1}}
 \newcommand{\NULL}{\texttt{NULL} pointer\xspace}
 
+\begin{document}
+\tableofcontents
 \setcounter{section}{-1}
 \section{Introduction}
 
@@ -46,17 +49,47 @@ We aim to implement a type of analytic functions in \irram. The \irram is a \cc 
 
 \section{Computable analytic functions}
 
+We will only consider analytic functions, that are equal to their Taylor expansion around zero on a open superset of the Unit disc. This means, that we can find some $r>1$ which is still strictly smaller than the radius of convergence. In the following we will fix such a function $f$.
 
+$f$ is uniquely determined by its Taylor-series in zero. In the following, we will denote the Taylor-series of $f$ by $(a_n)_{n\in \NN}$. It can be expressed in terms of $f$s derivatives, or by Cauchy's differentiation formula:
+\[ a_n = \frac{f^{(n)}(0)}{n!} = \frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda. \]
+The sequence $(a_n)_{n\in \NN}$ is computable if and only if $f$ is computable (as continuous function). 
+
+Unfortunately it is not possible to evaluate such a function effectively without further information. We additionally need two constants $k$ and $A$. $k$ will be such, that $r:=\sqrt[k]{2}$ is still smaller than the radius of convergence of $(a_n)_{n\in \NN}$ and $A$ such that for all $n\in \NN$
+\[ |a_n|  r^n \leq A. \]
+Since we demanded a convergence radius strictly larger than 1, constants like this will always exist.
+
+We will briefly discuss how these constants can be found: Since the radius of convergence of $f$ is assumed to be strictly larger than $1$, and $r:=\sqrt[k] 2$ goes to $1$ as $k$ goes to infinity, it is possible to choose $k$ big enough for $r$ to be in between $1$ and the radius of convergence. Now fix such an $k$. Consider the function
+\[ f|_{\{z:|z| = r\}}. \]
+Since this is a continuous function on a compact domain, it will be bounded. If $A$ is a bound of this function, the Cauchy differentiation formula gives:
+\[ |a_n |=  \left|\frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda\right| \leq \frac A {r^n} \]
+Thus $A$ is as desired.
+
+Using these constants, we can obtain a tail estimate:
+\[ \left|\sum_{n \geq N} a_n z^n\right| \leq A \frac{(|z|/r)^N}{1- |z|/r} \leq. \]
+In particular we get a bound for $f$ on the unit disc: If $|z|\leq 1$, we get:
+\[ |f(z)| \leq A\frac r{r-1}. \]
+More information on how to calculate these constants (for example for the product of two such functions) can be found in \ref{}. The most important part of the source for our intentions will be Theorem 3.3. The proof of this Theorem in particular specifies how constants $k'$ and $A'$ for the derivative $f'$ can be found, namely:
+\[ k' := 2 k \]
+and
+\[ A' := \left\lceil \frac{A}{r} \left(1+ \frac{2k}{e \ln(2)}\right)\right\rceil. \]
+Since any bound of $f'$ on the unit disc is also a bound of the Lipschitz constant of $f$, this allows us to explicitly calculate a Lipschitz constant
+\[ L := \left\lceil A \frac{\left(1 + \frac{2k}{e\ln(2)}\right)}{r-\sqrt{r}}\right\rceil \]
+for $f$ with very little computational effort.
+
+We have used the ceiling function above. In terms of computable analysis, this function is not well behaved (since it is not continuous, it will not be computable). Thus we will use the function $x \mapsto \ir{round2}(x) +1$ as a replacement. Here \ir{round2}() is a multivalued function already implemented in \irram.
 
 \section{\irram}
 
 At first glance the most reasonable approach to computable analysis would be to represent a real number $x$ by an algorithm $P$ taking a natural number $n$ and returning a approximation, i.e. a appropriately encoded rational number $x_n$ such that $|x-x_n|<2^{-n}$. This kind of proceeding bears the following problems:
 \begin{itemize}
 \item Each time a sum or a product of real numbers is calculated, the algorithms of the corresponding real numbers must be copied or at least referenced. This leads to a tree-like structure of any Program and often to uncontrollable growth of memory consumption.
-\item A algorithm $P$ encoding a real number carries more information than the real number itself. If $P$ is given to a function, this function can for example also use the running time of $P$ to generate its output. This kind of functions should from a mathematical point of view not be considered computable, since it can lead to pathological behavior.
+\item A algorithm $P$ encoding a real number carries more information than the real number itself. If $P$ is given to a function, this function can for example also use the running time of $P$ to generate its output. This kind of functions should from a mathematical point of view not be considered computable, and can lead to pathological behavior.
 \end{itemize}
 
-Thus the \irram chooses a different approach. Namely the real numbers are represented by finite Intervals containing said real number. All manipulations are carried out with these intervals. If a situation occurs, where the precision is simply not sufficient anymore, the whole calculation is restarted with higher precision. We call this procedure a \emph{reiteration}.
+Thus the \irram chooses a different approach. Namely the real numbers are represented by finite intervals containing said real number. All manipulations are carried out with these intervals. If a situation occurs, where the precision is simply not sufficient anymore, the whole calculation is restarted with higher precision. This procedure is called a \emph{reiteration}.
+
+This proceeding seems to be very time consuming since the computation my be restarted repeatedly. But it is well known, that this does not blow up the asymptotic complexity: More precisely, the asymptotic complexity of the whole computation and the last reiteration coincide.
 
 \irrams approach does not suffer the problems listed above, but brings its own (which are hopefully more manageable):
 \begin{itemize}
@@ -64,6 +97,7 @@ Thus the \irram chooses a different approach. Namely the real numbers are repres
 \item If on the other hand, the program asked the user for input at some point, this input will have to be memorized. Moreover: if any multivalued function is computed, it has to evaluate to the exact same value in the next run and has to be memorized. This is to avoid incoherences in output.
 \item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is reevaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
 \end{itemize}
+
 Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programing language, it is often possible for the user to do things he is not really supposed to do. We will encounter this problem ourselves in \ref{}.
 
 We will now consider some parts of \irram more closely.
@@ -124,9 +158,10 @@ class function {};
 template<class T, class S>
 class function<T(S)> {/*...*/};
 \end{lstlisting}
-Here the first two lines define an empty template class, then lines four and five specialize the definition in the case, that the template argument is of a specific form. Namely a string of the form T(S), where T and S are some arbitrary types.
+Here the first two lines define an empty template class, then lines four and five specialize the definition in the case, that the template argument is of a specific form. Namely a string of the form T(S), where T and S are some arbitrary types. We will use this trick to also improve the syntax of our function type.
 
-We will use this trick to also improve the syntax of our function type.
+\texttt{std::function}s are in many respects superior to \cc functions, but they lack one thing functions do have: the possibility to have templates.
+
 
 \subsection{The \cc lambda calculus}
 
@@ -158,6 +193,8 @@ will not work. The reason is the following: Assume the class C has some member f
 \end{lstlisting}
 would be ambiguous, since c.k could mean both the field of the object c captured by reference, which has the new value, or the member c.k, which was captured by copy before the change was made and therefore should have the old value.
 
+Thus we will have to first copy the member to a local variable, then capture it.
+
 \subsection{\texttt{std::shared\_ptr}s}
 
 A shared pointer is an object consisting of an pointer (to an object of specified type) and a pointer to an reference counter. Each time the shared pointer is copied the reference counter will be increased. If a shared pointer is destroyed, it decreases the reference counter and checks if it is zero, and if it is, it destroys the object it is pointing to.
@@ -182,6 +219,8 @@ There are two main sources of errors when handling shared pointers:
 \section{putting stuff together}
 
 \subsection{the class \texttt{FUNC}}
+
+This class is supposed to model (computable) functions. It will mainly consist of an shared pointer to a \texttt{std::function} (called algorithm). Since the algorithm may be used by multiple functions, it will be a constant.
 
 \subsection{the class \texttt{POWERSERIES}}
 
