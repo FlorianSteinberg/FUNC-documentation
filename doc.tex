@@ -37,15 +37,18 @@
 \newcommand{\irrams}{\texttt{iRRAM}s\xspace}
 \newcommand{\cc}{\texttt{C++}\xspace}
 \newcommand{\ccOx}{\texttt{C++11}\xspace}
-\newcommand{\ir}[1]{\texttt{#1}}
+\newcommand{\ir}[1]{\texttt{#1}\xspace}
+\newcommand{\code}[1]{\texttt{#1}\xspace}
+\newcommand{\func}[1]{\texttt{#1}\xspace}
 \newcommand{\NULL}{\texttt{NULL} pointer\xspace}
+\newcommand{\temp}[1]{\textcolor{red}{#1}}
 
 \begin{document}
 \tableofcontents
 \setcounter{section}{-1}
 \section{Introduction}
 
-We aim to implement a type of analytic functions in \irram. The \irram is a \cc library for arbitrary precision real analysis. We will begin by giving a short overview over \irram.
+We aim to implement a type of analytic functions in \irram. The \irram is a \cc package for error-free real arithmetic. We will begin by summarizing the facts about computable analytic functions we need. We will go on to describe some of the key features of \irram. The we will present some parts of the \ccOx standard template library we need for implementation. Finally we will describe how the implementation was done. In the last chapter we will address some shortcomings and possible future improvements.
 
 \section{Computable analytic functions}
 
@@ -102,15 +105,35 @@ Another point is, that programs for \irram are written in \cc. Since \cc is a ve
 
 We will now consider some parts of \irram more closely.
 
-\subsection{\irram functions}
+\subsection{\irrams output functions}
 
 We did already mention, that output in \irram can be a problem and that one should use the output methods provided by \irram. To cope with the difficulties of duplicated output, \irram has its own class of streams \irram::\ir{orstream}, which replaces the standard output streams. The following can be used for output:
 \begin{itemize}
-\item The \irram::\ir{orstream} \irram::\ir{cout}.
+\item The \irram::\ir{orstream} \irram::\ir{cout} via overloaded \ir{<<} operators.
 \item The functions \irram::\ir{rwrite}, \irram::\ir{rwritee} and \irram::\ir{rshow}.
 \item The function \irram::\ir{rfprint}.
 \end{itemize}
 In the following we will leave the preceding \irram:: away. This coincides with the syntax used inside of \irram programs. One should note, that \ir{cout} differs from \texttt{std::cout}: Pointers will be output as $1$ if they point somewhere and as $0$ if they do not. This is important, since pointer addresses can change in reiterations, which could lead to inconsistent output.
+
+The first point in the list above does play a special role here, since it is used by all the others. They call the function \ir{swrite}, which prints a \ir{REAL} to a string and then output this value through the \ir{cout} by using the \ir{<<} operator.
+
+Thus we will first take a closer look at the class \ir{orstream}. The main components of an \ir{orstream} are:
+\begin{description}
+\item[\code{target}:] An \texttt{std::ostream} pointer, used for output.
+\item[\code{requests}:] A static but thread specific request counter.
+\item[\code{outputs}:] A static but thread specific output counter.
+\item[\code{real\_w}:] A standard value for the output width of real numbers.
+\item[\code{real\_f}:] \ref{}.
+\end{description}
+The output operator \code{<<} is defined for most standard data types of \cc, and for the \irram specific data types like \ir{REAL}, \ir{DYADIC}, \ir{RATIONAL}, \ir{INTEGER} and \ir{COMPLEX}.
+
+Lets assume the operator \code{<<} is called with some \ir{orstream} \code{ors} and some standard \cc data type \code{x}. \code{ors} will then increase the counter \code{requests}, check if \code{requests} is bigger than \code{outputs}, and if so to pass \code{x} to the \ir{std::ostream} pointed at by target and also increase the counter \code{outputs}. If now a reiteration occurs, the counter \code{requests} will be reset, but the counter \code{outputs} will be kept. This leads to the following behaviour: In the next iteration first \code{outputs} outputs will be ignored, these are evidently exactly those which where already printed in one of the earlier iterations.
+
+If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameter \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
+
+We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some REAL it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result could be confusing for the user. This is put down in red, since it might be considered a bug and removed in future versions.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
+
+The remaining output functions simply call the function \ir{swrite} with the desired precision and then hand the string to \irrams standard \ir{orstream} \ir{cout}.
 
 \subsection{\irram::\ir{FUNCTION}s}
 
@@ -118,7 +141,7 @@ We aim to implement a type for analytic functions in \irram, which is not yet pr
 
 \subsection{Limits}
 
-\section{Tools}
+\section{Some tools from the \ccOx standard template library}
 
 In \cc, there are four kinds of functional objects: functions, member functions, function pointers and member function pointers. Since the first two are very common, we will start at function pointers. It is important to note, that function pointers, in contrast to regular pointers, do not point to a chunk of memory where a function is located, but to a the piece of code where the function is defined. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions. Member function pointer actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. Really using member functions would be very involved, luckily for us \ccOx added improved syntax for exactly this.
 
@@ -217,6 +240,16 @@ There are two main sources of errors when handling shared pointers:
 \end{itemize}
 
 \section{putting stuff together}
+
+We will introduce the following classes:
+\begin{description}
+\item[\func{FUNC<RESULT(PARAM)>}] will be a new class, replacing \irrams class \ir{FUNCTION<PARAM, RESULT>}, relying heavily on the tools provided by the \ccOx standard template library instead of implementing reference counters and stuff by hand.
+\item[\func{BASE\_ANALYTIC<ARG>}] will be a class implementing analytic functions with REAL coefficients, that coincide with their Taylor expansion on the closed unit disc. This class will be derived from the class \func{FUNC<ARG(ARG)>}. Some of the functionalities of this class will be exported to the following two classes, in the hope that they might prove useful on their own.
+\item[\func{POWERSERIES<coeff\_type>}] will implement formal power series. This is, functions from the integers to objects of type \code{coeff\_type}, but with the convolution replacing the point wise product and the function \code{get\_coeff} to avoid the operator \code{()}, which in this case might be ambiguous, since it could mean both the evaluation as function from the integers to \code{coeff\_type} or analytic function. Also a formal derivative and anti derivative will be implemented.
+\item[\func{POLY<coeff\_type>}] will implement polynomials and be very close in its implementation to the type \func{POWERSERIES<coeff\_type>}
+\end{description}
+
+There will be one additional helper class \func{coeff\_fetcher<coeff\_type>}, to improve the speed at which the coefficients can be calculated.
 
 \subsection{the class \texttt{FUNC}}
 
