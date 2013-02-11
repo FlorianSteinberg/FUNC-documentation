@@ -39,9 +39,9 @@
 \newcommand{\irrams}{\texttt{iRRAM}s\xspace}
 \newcommand{\cc}{\texttt{C++}\xspace}
 \newcommand{\ccOx}{\texttt{C++11}\xspace}
-\newcommand{\ir}[1]{\texttt{#1}\xspace}
-\newcommand{\code}[1]{\texttt{#1}\xspace}
-\newcommand{\func}[1]{\texttt{#1}\xspace}
+\newcommand{\ir}[1]{\texttt{#1}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\func}[1]{\texttt{#1}}
 \newcommand{\NULL}{\texttt{NULL} pointer\xspace}
 \newcommand{\temp}[1]{\textcolor{red}{#1}}
 
@@ -131,7 +131,7 @@ The output operator \code{<<} is defined for most standard data types of \cc, an
 
 Lets assume the operator \code{<<} is called with some \ir{orstream} \code{ors} and some standard \cc data type \code{x}. \code{ors} will then increase the counter \code{requests}, check if \code{requests} is bigger than \code{outputs}, and if so to pass \code{x} to the \ir{std::ostream} pointed at by target and also increase the counter \code{outputs}. If now a reiteration occurs, the counter \code{requests} will be reset, but the counter \code{outputs} will be kept. This leads to the following behaviour: In the next iteration first \code{outputs} outputs will be ignored, these are evidently exactly those which where already printed in one of the earlier iterations.
 
-If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameter \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
+If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameters \code{x} and \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}, but at least $9$ characters. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
 
 We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some REAL it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result could be confusing for the user. This is put down in red, since it might be considered a bug and removed in future versions.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
 
@@ -245,10 +245,10 @@ There are two main sources of errors when handling shared pointers:
 
 We will introduce the following classes:
 \begin{description}
+\item[\func{POLY<coeff\_type>}] will be a minimalistic class for polynomials with coefficients of type \code{coeff\_type}.
 \item[\func{FUNC<RESULT(PARAM)>}] will be a new class, replacing \irrams class \ir{FUNCTION<PARAM, RESULT>}, relying heavily on the tools provided by the \ccOx standard template library instead of implementing reference counters and stuff by hand.
 \item[\func{BASE\_ANALYTIC<ARG>}] will be a class implementing analytic functions with REAL coefficients, that coincide with their Taylor expansion on the closed unit disc. This class will be derived from the class \func{FUNC<ARG(ARG)>}. Some of the functionalities of this class will be exported to the following two classes, in the hope that they might prove useful on their own.
 \item[\func{POWERSERIES<coeff\_type>}] will implement formal power series. This is, functions from the integers to objects of type \code{coeff\_type}, but with the convolution replacing the point wise product and the function \code{get\_coeff} to avoid the operator \code{()}, which in this case might be ambiguous, since it could mean both the evaluation as function from the integers to \code{coeff\_type} or analytic function. Also a formal derivative and anti derivative will be implemented.
-\item[\func{POLY<coeff\_type>}] will implement polynomials and be very close in its implementation to the type \func{POWERSERIES<coeff\_type>}
 \end{description}
 
 There will be one additional helper class \func{coeff\_fetcher<coeff\_type>}, to improve the speed at which the coefficients can be calculated.
@@ -311,8 +311,51 @@ FUNC<RESULT(PAR)> FUNC<RESULT(PARAM)>::operator () (
 Here we used the abbreviation \code{alg\_ptr<PARAM, RESULT>} for \code{shared\_ptr<const function<RESULT(const PARAM\&)>}. First we check, that both the functions have algorithms (line 6). If one of them does not, we return a function without an algorithm. Next we save the algorithms of both functions to local variables (compare the end of \cref{sec: The cc lambda calculus}). In line 10 we define a new function via the \cc lambda calculus. The lambda expression captures the local variables we defined by copy and returns upon input the composition of the two algorithms. Since the new algorithm owns shared pointers to the algorithms of the functions to be composed, these algorithms will not be deleted before the new algorithm is destroyed. Finally in line 8 we return a function with the composition of the algorithms as algorithm.
 
 
-\subsection{the class \texttt{POWERSERIES}}
+\subsection{the class \func{POWERSERIES}}
 
-\subsection{the class \texttt{BASE\_ANALYTIC}}
+The class \func{POWERSERIES} is supposed to model formal power series. As such it is a template in the coefficient type, abbreviated by \code{c\_t}. We want to be able to compute sums and products of power series, therefore the coefficient type needs to have an addition and an multiplication defined. More specific \code{c\_t} needs to be a unital ring in the sense, that the corresponding standard operators need to be defined (constructors from positive integers, $+$, $*$, additive inverse). 
+\begin{lstlisting}
+template<class c_t>
+class POWERSERIES {
+	// members:
+		private:
+			shared_ptr<const FUNC<c_t(const unsigned int&)>> coeff;
+			coeff_fetcher<c_t>* get_coeffs=new coeff_fetcher<c_t>(this);
+	// constructors:
+		public:
+				POWERSERIES(c_t);
+				POWERSERIES(FUNC<c_t(const unsigned int&)>);
+				POWERSERIES(function<c_t(const unsigned int&)>);
+	// standard operators:
+		public:
+			POWERSERIES& operator = (const POWERSERIES<c_t>&);
+			POWERSERIES operator + (const POWERSERIES<c_t>&) const;
+			/*...*/
+			POWERSERIES operator * (const POWERSERIES<c_t>& P) const;
+			POWERSERIES operator () (const POWERSERIES<c_t>& P) const; 
+	// member functions:
+		public:
+			c_t get_coeff(const unsigned int& n) const;
+			POLY<c_t> cut_of_at(const unsigned int& n) const;
+			void derive(const unsigned int&);
+			void anti_derive(const unsigned int&);	
+\end{lstlisting}
+We describe its components:
+\begin{description}
+\item[\code{members}:] The main component of a \func{POWERSERIES} is a shared pointer to a sequence, which we represent by an object of type \func{FUNC<c\_t(const unsigned int\&)>}, that is a function from the positive integers to the coefficient type. The second member, an pointer to an object of type \lq coeff\_fetcher\rq\ will be addressed at the end of the section, and is merely for performance improvement.
+\item[\code{constructors}:] There are three constructors. The first (line 9) takes an object \code{x} of the coefficient type and returns the power series with first coefficient \code{x} followed by zeros (This power series represents the constant function which always returns \code{x}). The second constructor takes what we decided to represent a sequence and returns the corresponding power series. The third one can be directly fed a \cc lambda expression.
+\item[\code{standard operators}:] The standard operators are overloaded for power series. We again emphasise, that the multiplication is the convolution and not point wise. For the composition to be well defined, the first coefficient of the inner power series needs to be zero. Since \code{c\_t} can for example be the type \ir{REAL}, for which a test of equality is not accessible, the composition will not give an warning, if the first coefficient of the inner series is not zero, but the return value will be incorrect.
+\item[\code{member functions}:] The member functions should be self explanatory.
+\end{description}
+
+To explain the use of the class coeff\_fetcher, consider the product \code{P*Q} of two power series \code{P} and \code{Q}. Each time we call \code{(P*Q).get\_coeff(n)}, the convolution of the power series is calculated, which involves \code{n} multiplications and \code{n} additions. There are cases, where the same coefficient is needed multiple times, for example if we want to evaluate the powers \code{P}$^i$ of some power series. In this case it would be more efficient, to remember the coefficients and not to recompute them each time.
+
+The above can be implemented by saving a vector \code{known\_coeffs} of pointers to the coefficient type: Each time some, say the \code{n}-th coefficient is requested, the function \code{get\_coeff} will check, whether \code{known\_coeffs[n]} is defined and not the \NULL. If it is, it will return the value pointed to. If it is not, it calculate the value and set \code{known\_coeffs[n]} to point to a coefficient type of the result value.
+
+Thus far, this could be implemented in the class \func{POWERSERIES} itself. There is one problem: It is often reasonable to work with constant power series (for example the power series underlying a \func{BASE\_ANALYTIC} should be constant for the exact same reasons the algorithm of a \func{FUNC} and the sequence of a \func{POWERSERIES} is). But in this case, the vector \code{known\_coeffs}, as a member of a constant object, will also be constant. Thus this vector will be stored in a external class \func{coeff\_fetcher}, and be referenced in \func{POWERSERIES} only by pointer.
+
+We remark, that the class \func{coeff\_fetcher} does have one additional member function \code{reset()}, to reset the vector of known values to an empty vector. This is for the case, that saving values leads to memory overflow.
+
+\subsection{the class \func{BASE\_ANALYTIC}}
 
 \end{document}
