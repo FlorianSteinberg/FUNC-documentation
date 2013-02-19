@@ -34,6 +34,8 @@
 	belowskip=.25cm}
 
 \DeclareMathOperator{\NN}{\ensuremath{\mathbb{N}}\xspace}
+\DeclareMathOperator{\RR}{\ensuremath{\mathbb{R}}\xspace}
+\DeclareMathOperator{\CC}{\ensuremath{\mathbb{C}}\xspace}
 
 \newcommand{\irram}{\texttt{iRRAM}\xspace}
 \newcommand{\irrams}{\texttt{iRRAM}s\xspace}
@@ -91,11 +93,17 @@ Since any bound of $f'$ on the unit disc is also a bound of the Lipschitz consta
 \[ L := \left\lceil A \frac{\left(1 + \frac{2k}{e\ln(2)}\right)}{r-\sqrt{r}}\right\rceil \]
 for $f$ with very little computational effort.
 
-We have used the ceiling function above. In terms of computable analysis, this function is not well behaved (since it is not continuous, it will not be computable). Thus we will use the function $x \mapsto \ir{round2}(x) +1$ as a replacement. Here \ir{round2}() is a multivalued function already implemented in \irram.
+\temp{We have used the ceiling function above. In terms of computable analysis, this function is not well behaved (since it is not continuous, it will not be computable). Thus we will use the function $x \mapsto \ir{round2}(x) +1$ as a replacement. Here \ir{round2}() is a multivalued function already implemented in \irram.}
 
 \part{\irram}
 
-At first glance the most reasonable approach to computable analysis would be to represent a real number $x$ by an algorithm $P$ taking a natural number $n$ and returning an approximation, i.e. a appropriately encoded rational number $x_n$ such that $|x-x_n|<2^{-n}$. This kind of proceeding bears the following problems:
+In this part, we are going to describe some key features of the \cc library \irram for exact real arithmetic. We do not claim our depiction to be complete or self-contained. Instead we restrict ourselves to those parts of \irram that are of importance for us, and can neither be found in \cite{} nor in \cite{} \temp{yet?}.
+
+\section{Basic functionalities}
+
+\subsection{The general idea}
+
+At first glance the most reasonable approach to computable analysis would be to represent a real number $x$ by an algorithm $P$ taking a natural number $n$ and returning an approximation, i.e. an appropriately encoded rational number $x_n$ such that $|x-x_n|<2^{-n}$. This kind of proceeding bears the following problems:
 \begin{itemize}
 \item Each time a sum or a product of real numbers is calculated, the algorithms of the corresponding real numbers must be copied or at least referenced. This leads to a tree-like structure of any program and often to uncontrollable growth of memory consumption.
 \item A algorithm $P$ encoding a real number carries more information than the real number itself. If $P$ is given to a function, this function can for example also use the running time of $P$ to generate its output. This kind of functions should from a mathematical point of view not be considered computable, and can lead to pathological behavior.
@@ -109,21 +117,14 @@ At first glance, this approach seems to be very time consuming: The whole comput
 \begin{itemize}
 \item If the program includes in and output, a restart of the program will lead to doubled output. This is mainly a implementation problem and can be avoided by using the output methods provided by \irram.
 \item If on the other hand, the program asked the user for input at some point, this input will have to be memorized. Moreover: if any multivalued function is computed, it has to evaluate to the exact same value in the next run and has to be memorized. This is to avoid incoherences in output.
-\item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is reevaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
+\item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is re-evaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
 \end{itemize}
 
-Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programing language, it is often possible for the user to do things he is not really supposed to do. We will encounter this problem ourselves in \ref{}.
+The problem described in the last bullet can partially be eliminated by dividing the tasks into two sub-programs. However, as mentioned above, this does not effect the asymptotic running time, and we thus will not go into it in more detail. Instead we will go into the problem discussed in the first bullet in more detail in the oncoming section. \temp{Note, that the content of the remaining bullet is very closely related. It may not be addressed on its own.}
 
-We will now consider some parts of \irram more closely.
+Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programming language, it is often possible for the user to do things he is not really supposed to do.
 
-\section{Basic data types}
-
-\subsection{The class REAL}
-\subsection{The class COMPLEX}
-\subsection{The class INTEGER}
-
-\section{\irram functions}
-\subsection{Output functions}
+\subsection{Output}
 
 We did already mention, that output can be a problem and that one should use the output methods provided by \irram. To cope with the difficulties of duplicated output, \irram has its own class of output streams \irram::\ir{orstream}, which replaces the standard output streams. The following can be used for output:
 \begin{itemize}
@@ -143,29 +144,99 @@ Thus we will first take a closer look at the class \ir{orstream}. The main compo
 \item[\code{real\_w}:] A standard value for the output width of real numbers.
 \item[\code{real\_f}:] \ref{}.
 \end{description}
-The output operator \code{<<} is defined for most standard data types of \cc, and for the \irram specific data types like \ir{REAL}, \ir{DYADIC}, \ir{RATIONAL}, \ir{INTEGER} and \ir{COMPLEX}.
+The output operator \code{<<} is defined for most standard data types of \cc, and for the \irram specific data types like \ir{REAL}, \ir{DYADIC}, \ir{RATIONAL}, \ir{INTEGER} and \ir{COMPLEX} (which will be explained in more detail in \cref{}, or can be found in \cite{}).
 
 Lets assume the operator \code{<<} is called with some \ir{orstream} \code{ors} and some standard \cc data type \code{x}. \code{ors} will then increase the counter \code{requests}, check if \code{requests} is bigger than \code{outputs}, and if so to pass \code{x} to the \ir{std::ostream} pointed at by target and also increase the counter \code{outputs}. If now a reiteration occurs, the counter \code{requests} will be reset, but the counter \code{outputs} will be kept. This leads to the following behaviour: In the next iteration first \code{outputs} outputs will be ignored, these are evidently exactly those which where already printed in one of the earlier iterations.
 
 If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameters \code{x} and \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}, but at least $9$ characters. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
 
-We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some REAL it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result could be confusing for the user. This is put down in red, since it might be considered a bug and removed in future versions.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
+We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result could be confusing for the user. This is put down in red, since it might be considered a bug and removed in future versions.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
 
-The remaining output functions simply call the function \ir{swrite} with the desired precision and then hand the string to \irrams standard \ir{orstream} \ir{cout}.
+The remaining output functions simply call the function \ir{swrite} with the desired precision and then hand the string to \irrams standard \ir{orstream} \ir{cout}. Thereby bypassing \ir{cout}s standard output precision.
+
+
+\section{Data types}
+
+\subsection{The class \ir{REAL}}
+
+The data type \ir{REAL} is the heart of \irram. The class models real numbers via Intervals. A overview over the main functionalities can be found in \cite{}. We will take a closer look at the implementation. The most important members of the class \ir{REAL} are:
+\begin{description}
+\item[bla:] A pointer to an MP object.
+\item[blabla:]
+\end{description}
+
+\subsection{The class \ir{INTEGER}}
+
+As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int}, is that there is no restriction on the size of the Integer. The main drawback is, that the size and speed. Thus it should only be used, when an unbounded size is really necessary.
+
+Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). We note, that there already exist limitations of this kind in other parts of \irram. For example in \cite{} on page \ref{} a similar restriction is implied. It would be interesting to compare those restrictions in their severity.}
+
+\temp{describe how INTEGER and REAL interact}
+
+\subsection{The class \ir{COMPLEX}}
+
+The complex numbers play a very important role in the theory of the analytic function. This importance will only be partially reflected in our implementation. The reason is that equality is not computable. This means that it can not be checked whether the imaginary part of a complex number vanishes. This entails the following two drawbacks when handling real valued analytic functions as a special case of analytic functions with complex coefficients:
+\begin{itemize}
+\item Since we can not detect whether a sequence is really real valued, all operations would have to be carried out with the complex series with vanishing imaginary part. This means we would spend a lot of time on unnecessary operations of adding and multiplying zeros.
+\item For similar reasons, we would have to output complex numbers upon real input. This can not easily be fixed, since there is no canonical way to convert a complex number to a real (compare \cref{}).
+\end{itemize}
+We will thus work with real coefficient series, and remark that these can be easily used to implement analytic functions with complex coefficients, since the real and imaginary part are analytic functions with real coefficients.
+
+Nonetheless we will want to allow evaluation of real analytic functions in complex arguments, thus we need a more or less complete type for complex numbers. \irram provides the class \ir{COMPLEX} for this purpose. As we do already have a type for real numbers, the implementation of this type is very simple and need not be further addressed here. However, the type lacks some basic capabilities we will need. For example, the operators \ir{<<} and \code{+=} are not overloaded and there are no constructors from types other than \ir{REAL}. We give a short description of the improvements we made:
+\begin{description}
+\item[constructors:] We added the following three constructor templates:
+\begin{lstlisting}
+template<class T>
+COMPLEX(const T& real_part);
+template<class T, class S>
+COMPLEX(const T& real_part, const S& imag_part);
+template<class T, class S>
+COMPLEX(std::pair<T,S> p);
+\end{lstlisting}
+The first takes an arbitrary type \code{T}, attempts to convert this type to a \ir{REAL}, and then constructs a \ir{COMPLEX} having the result as real part and imaginary part zero. The second does the same, but for both real and imaginary part. The third constructor will accept a \code{std::pair} instead of two parameters. This is in particular useful, since it enables the use of nested lists to construct vectors of complex numbers:
+\begin{lstlisting}
+vector<COMPLEX> v = {{1,2}, {pi(),4.5}};
+\end{lstlisting}
+\item[operators and functions:] The operators \code{+=} and \code{*=} where implemented in the obvious way. Furthermore the two functions
+\begin{lstlisting}
+COMPLEX power(const COMPLEX&, const COMPLEX&);
+COMPLEX power(const COMPLEX&, const int);
+\end{lstlisting}
+were added. The implementations are slightly adjusted copies of those of the real counterparts.
+\item[output:] The operator \ir{<<} was overloaded. The following conventions were established:
+\begin{itemize}
+\item The precision will be interpreted point wise. This means, both the real and the imaginary part will be printed with the specified precision. This corresponds to the use of the supremum norm on $\CC = \RR^2$.
+\item Complex numbers will be coated in parentheses. This is to avoid confusion. For example the attempt to output a linear monomial via a template as follows:
+\begin{lstlisting}
+template<class T>
+void out(const T& x) {
+	cout << x << " * X" << endl;
+}
+\end{lstlisting}
+would otherwise lead to ambiguous (or wrong) output.
+\item If the imaginary part of the number is smaller than the desired precision, only the real part will be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same procedure for vanishing real part.
+\end{itemize}
+\end{description}
+
+\section{\irram functions}
+
+\subsection{Limits}
 
 \subsection{\irram::\ir{FUNCTION}s}
 
 We aim to implement a type for analytic functions in \irram, which is not yet present. But there already is a type of functions implemented. We will give a short review of this type.
 
-\subsection{Limits}
+\part{Implementation}
 
-\section{Tools from the \ccOx standard template library}
+\temp{some warming words}
 
-In \cc, there are four kinds of functional objects: functions, member functions, function pointers and member function pointers. Since the first two are very common, we will start at function pointers. It is important to note, that function pointers, in contrast to regular pointers, do not point to a chunk of memory where a function is located, but to a the piece of code where the function is defined. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions. Member function pointer actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. Really using member functions would be very involved, luckily for us \ccOx added improved syntax for exactly this.
+\section{Tools provided by the \ccOx standard template library}
 
-We will in the following sections review the tools we need to handle functions and their dependencies.
+\cc provides four kinds of functional objects: functions, member functions, function pointer and member function pointer. Since the first two are very common, we assume the reader is familiar with them. However, it is important to note that a function pointer can only point at functions that where created outside of the main program. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions.
 
-\subsection{\code{std::function}s}
+Member function pointer do actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. Using member functions to achieve the flexibility we desire would be very involved, luckily for us \ccOx added improved syntax for exactly this. In the following sections review these tools.
+
+\subsection{\code{std::function}s}\label{sec: std::functions}
 
 The std::function template is a general-purpose polymorphic function wrapper (according to cppreference.com). We will find \code{std::function}s to be highly useful. But it will be not until we learn about the \cc lambda calculus, that we can grasp their whole potential. Thus the description in this chapter might appear somewhat unspectacular. A \code{std::function} can be defined by
 \begin{lstlisting}
@@ -262,8 +333,6 @@ There are two main sources of errors when handling shared pointers:
 \item Circular ownership relations: for simplicity lets have a look at the case of two lonely shared pointers pointing at each other. Each of the pointers has a reference counter which is one (since they are lonely). now assume we destroy one of them. This will decrease the corresponding reference counter and, since the reference count will hit zero, destroy the other shared pointer. This in turn will decrease its reference counter, which will also hit zero. Therefore it will attempt to destroy the first shared pointer. Which is already destroyed. This will lead to an error.
 \end{itemize}
 
-\part{Implementation}
-
 \section{Some classes of functions and similar objects}
 
 Before we talk about the class of Taylor series we are aiming to implement, we will introduce two more general classes (and one more restrictive). These classes are convenient for us, since a lot of code, which would otherwise make the class of Taylor series huge, can be \lq exported\rq. This improves code readability. Of course we also hope that these classes might proof useful on their own.
@@ -298,15 +367,15 @@ class POLY {
 	// standard operators:
 		public:
 			POLY& operator = (const POLY<coeff_type>&);
-			POLY operator - (const POLY<coeff_type>&);
+			friend POLY operator - (const POLY<coeff_type>&);
 			/* ... */
 			POLY& operator *= (const POLY<coeff_type>&);
 	// member functions:
 		public:
+			coeff_type get_coeff(const unsigned int n) const;
+			unsigned int get_degree() const;
 			template<class ARG>
 			ARG operator () (const ARG&);
-			unsigned int get_degree() const;
-			coeff_type get_coeff(const unsigned int n) const;
 };
 \end{lstlisting}
 
@@ -315,29 +384,25 @@ We briefly discuss the general purpose of the components of this class, before w
 \item[\code{members}:] The one existent member has already been discussed above.
 \item[\code{constructors}:] In line 8 the empty constructor can be found, it will construct the zero polynomial. Then there is a constructor template in line 9 and 10, which will attempt to convert any given type \code{T} to \code{coeff\_type} and then construct the polynomial having this value as first and only coefficient. Finally in line 11 we find a constructor, that constructs a polynomial from a given list of coefficients. We refrain from handing the vector over as a reference to allow syntax such as \code{POLY<REAL> P(\{1,2,pi()\})}, where \code{\{1,2,pi()\}} as a temporary object can not be referenced.
 \item[\code{standard operators}:] There is no complete list of the operators above, so we give one here: The operators \code{=} (copy constructor), \code{-} (additive inverse), \code{+}, \code{-} (substraction), \code{*}, \code{+=} and \code{*=} are overloaded for polynomials.
-\item[\code{member functions}:] line 20 and 21 are taken by an evaluation operator. Since polynomials are often evaluated in types more general than \code{coeff\_type} (for example Polynomials with integer coefficients are regularly taken as functions on the real or complex numbers) this operator is a template. Of course the argument \code{ARG} needs to provide an addition and multiplication. Additionally \code{ARG} needs to have an multiplication with \code{coeff\_type} from the right (this is in particular the case if \code{ARG} is constructible from \code{coeff\_type}).
+\item[\code{member functions}:] The function \code{get\_degree()} will return the length of the coefficient vector. The highest coefficient might be zero, so we do not really get the degree, but a upper bound for it. Since we can not check whether a coefficient is zero in general, this is not avoidable. \code{get\_coeff(n)} will return the \code{n}-th coefficient, if \code{n} is bigger than the coefficient vector is long, it will return zero. Another option would be to issue a warning or even an error, but the chosen approach simplifies the implementations of the standard operators. line 22 and 23 are taken by an evaluation operator. Since polynomials are often evaluated in types more general than \code{coeff\_type} (for example Polynomials with integer coefficients are regularly taken as functions on the real or complex numbers) this operator is a template. Of course the argument \code{ARG} needs to provide an addition and multiplication. Additionally \code{ARG} needs to have an multiplication with \code{coeff\_type} from the right (this is in particular the case if \code{ARG} is constructible from \code{coeff\_type}).
 \end{description}
 
-The implementation of the constructors is straight forward. So is most of the implementations of the standard operators. Since we will use the convolution product multiple times, we take a closer look at the multiplication:
+The implementation of the constructors are straight forward. So are most of the implementations of the standard operators. As example we take a closer look at the addition:
 \begin{lstlisting}
-POLY operator * (const POLY<coeff_type>& P) {
-	vector<coeff_type> coeff_new;
-	unsigned int degree_new = get_degree() + P.get_degree();
-	for (unsigned int k = 0; k <= degree_new; k++) {
-		coeff_type kth_coeff(0);
-		for (unsigned int l = max(0,(int)k-(int)P.get_degree()); (l <= get_degree())&&(k-l<=P.get_degree()); l++) {
-			kth_coeff += get_coeff(l) * P.get_coeff(k-l);
-		}
-		coeff_new.push_back(kth_coeff);
-	}			
-	return POLY<coeff_type>(coeff_new);
+POLY operator + (const POLY<coeff_type>& P) {
+	unsigned int max_degree = max(get_degree(), P.get_degree());
+	vector<coeff_type> new_coeff(max_degree + 1);
+	for (unsigned int i = 0; i <= max_degree; i++) {
+		new_coeff[i] = get_coeff(i) + P.get_coeff(i);
+	}
+	return POLY(new_coeff);
 }
 \end{lstlisting}
-\temp{... maybe this is not such a good idea, the convolution is nicer}
+Here we first calculate the maximum of the degrees and construct a vector of the right size. Then we calculate the new coefficients as sum of the old ones. Note that the function \code{get\_coeff} saves us one case distinction: It automatically adds zeros to the end of the smaller polynomial. We pay for the convenience by the additional time consumption of adding zeros.
 
 \subsection{The class \func{FUNC}}
 
-This class is supposed to model (computable) functions which maps objects of some class \code{PARAM} to objects of some other class \code{RESULT}. It will mainly consist of an shared pointer \code{algorithm} to a \code{std::function<RESULT(const PARAM\&)>}, we will refer to as the algorithm of the function. Since \code{algorithm} will be passed on, if a new function is created from existing ones, it will point to a constant. Changing the algorithm will be done by creating a new function and reassigning \code{algorithm}. If the algorithm is not used by any other function, it will automatically be removed. Here is the class definition of FUNC:
+This class is supposed to model (computable) functions which map objects of some class \code{PARAM} to objects of some other class \code{RESULT}. It will mainly consist of an shared pointer \code{algorithm} to a \code{std::function<RESULT(const PARAM\&)>} we will refer to as the algorithm of the function. Since \code{algorithm} will be passed on, if a new function is created from existing ones, it will point to a constant. Changing the algorithm will be done by creating a new function and reassigning \code{algorithm}. If the algorithm is not used by any other function, it will automatically be removed. We remark that, for improved syntax, the class \func{FUNC} is a template specialization (compare to the end of \cref{sec: std::functions}).
 \begin{lstlisting}
 template<class PARAM, class RESULT>
 class FUNC<RESULT(PARAM)> {
@@ -378,7 +443,7 @@ template<class PAR>
 FUNC<RESULT(PAR)> FUNC<RESULT(PARAM)>::operator () (
 	const FUNC<PARAM(PAR)>& f
 ) {
-	if((algorithm = NULL)||(f.algorithm = NULL))
+	if((algorithm == NULL)||(f.algorithm == NULL))
 		return FUNC<RESULT(PAR)>();
 	alg_ptr<PARAM, RESULT> _algorithm = algorithm;
 	alg_ptr<PAR, PARAM> f_algorithm = f.algorithm;
