@@ -55,21 +55,26 @@
 \newpage
 \tableofcontents
 \newpage
-\section*{Introduction}
+\section*{\center{An introduction which can be skipped without guilty conscience}}
 
-We aim to implement a type of analytic functions in \irram. The \irram is a \cc package for error-free real arithmetic. We will begin by summarizing the facts about computable analytic functions we need. We will go on to describe some of the key features of \irram. The we will present some parts of the \ccOx standard template library we need for implementation. Finally we will describe how the implementation was done. In the last chapter we will address some shortcomings and possible future improvements. \temp{We will try to mark all parts of the text which might seem likely to become irrelevant in the future red. Ideally these sections should vanish sometime.}
+This text is meant to be a documentation of an expansion of the \cc library \irram for exact real arithmetic by a type for real analytic functions. The guideline for explicitness is as follows: A person who is familiar with the the basic notions of real computability theory, and a moderately experienced \cc programmer, should be able, when handed this document and its references, to reproduce (and in particular understand) all the additions done to \irram within a few days. This means we will not describe the added code line by line, but address the main obstacles that arose and explain how they were overcome.
+
+\temp{For the time being, \irram is still in development. Thus some details may, and some hopefully will change. We will try to mark all parts of the text which seem likely to become irrelevant or incorrect in the future red. More general we colour all parts, that are temporary. Ideally these sections should vanish sometime.}
+
+The paper is divided into \temp{a number of} parts. The first part serves to lay down the aspects of computability theory which are essential to the program but are not expected to be known by the reader. In the second part the we will describe some parts of \irram which can not be found in its documentation, but are essentially to what we want to do. The third part presents some parts of the \ccOx standard template library needed and then changes over to describes the key features and functionalities of the implementation. In the last chapter we will address some shortcomings and possible future improvements.
 
 \part{Higher type computability theory}
 
-We assume the reader is familiar with the concepts of computability of real numbers and functions thereon (at least functions on compact intervals). For look-up we suggest \cite{MR1005942} or the freely available \cite{MR2762094} and the references given there. Here the former adopts a somewhat analytical point of view, while the later stays closer to the notions of computability theory. Another good source is probably \cite{MR1795407} \temp{(which the author is not familiar with)}.
+We assume the reader is familiar with the concepts of computability of real numbers and functions thereon (at least functions on compact intervals). For look-up we suggest \cite{MR1005942} or the freely available \cite{MR2762094} and the references given there. Here the former adopts a somewhat analytical point of view, while the later stays closer to the notions of computability theory. Another good source is probably \cite{MR1795407} \temp{(which the author is not familiar with)}. As the main source for things to implement, we feel like the paper \cite{gevrey} should be mentioned in the introduction of this chapter. Tough it will be referenced at the multiple places where it is used.
 
 \section{Computable analytic functions}
 
-We will only consider analytic functions, that are equal to their Taylor expansion around zero on a open superset of the Unit disc. This means, that we can find some $r>1$ which is still strictly smaller than the radius of convergence. In the following we will fix such a function $f$.
+Let $B(x,r)$ denote the open disk of radius $r\in\RR^+$ around some $x\in \CC$ and $\overline{B(x,r)}$ its closure. The space of functions we are interested in is $C^\omega(\overline{B(0,1)})$, that is the functions analytic on a open superset of the closed unit disc. We will abbreviate this space as $C^\omega_1$. For the rest of this section we fix a function $f\in C^\omega_1$.
 
-$f$ is uniquely determined by its Taylor-series in zero. In the following, we will denote the Taylor-series of $f$ by $(a_n)_{n\in \NN}$. It can be expressed in terms of $f$s derivatives, or by Cauchy's differentiation formula:
+Since $f$ is analytic of an open superset of the unit disc, there is uniquely determined by the series of its Taylor coefficients in zero, which has a radius of convergence strictly larger than $1$. In the following, we will denote the series of Talyor coefficients of $f$ in zero by $(a_n)_{n\in \NN}$. It can be expressed in terms of the values of $f$s derivatives in zero, or by Cauchy's differentiation formula:
 \[ a_n = \frac{f^{(n)}(0)}{n!} = \frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda. \]
-The sequence $(a_n)_{n\in \NN}$ is computable (as sequence of real numbers) if and only if $f$ is computable (as continuous function). 
+It is well known, that this series is again computable, if the analytic function $f$ is (see for example \cite[Chapter 1.2, Proposition 1]{MR1005942}).
+
 
 \subsection[The constants k and A]{The constants $k$ and $A$}\label{sec: The constants k and A}
 
@@ -87,7 +92,7 @@ Using these constants, we can obtain a tail estimate:
 \[ \left|\sum_{n \geq N} a_n z^n\right| \leq A \frac{(|z|/r)^N}{1- |z|/r}. \]
 In particular we get a bound for $f$ on the unit disc: If $|z|\leq 1$, we get:
 \[ |f(z)| \leq A\frac r{r-1}. \]
-More information on how to calculate these constants (for example for the product of two such functions) can be found in \ref{}. The most important part of the source for our intentions will be Theorem 3.3. The proof of this Theorem in particular specifies how constants $k'$ and $A'$ for the derivative $f'$ can be found, namely:
+More information on how to calculate these constants (for example for the product of two such functions) can be found in \cite{gevrey}. The most important part of the source for our intentions will be Theorem 3.3. The proof of this Theorem in particular specifies how constants $k'$ and $A'$ for the derivative $f'$ can be found, namely:
 \[ k' := 2 k \]
 and
 \[ A' := \left\lceil \frac{A}{r} \left(1+ \frac{2k}{e \ln(2)}\right)\right\rceil. \]
@@ -96,6 +101,8 @@ Since any bound of $f'$ on the unit disc is also a bound of the Lipschitz consta
 for $f$ with very little computational effort.
 
 \temp{We have used the ceiling function above. In terms of computable analysis, this function is not well behaved (since it is not continuous, it will not be computable). Thus we will use the function $x \mapsto \ir{round2}(x) +1$ as a replacement. Here \ir{round2}() is a multivalued function already implemented in \irram.}
+
+We can express this in the framework of representations: define a sequence $\overline a$ to be a name of some function $f\in C^\omega(\overline{B(0,1)})$, if 
 
 \part{\irram}
 
@@ -177,7 +184,7 @@ Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $
 
 \subsection{The class \ir{COMPLEX}}\label{sec: The class COMPLEX}
 
-The complex numbers play a very important role in the theory of the analytic function. This importance will only be partially reflected in our implementation. The reason is that equality is not computable. This means that it can not be checked whether the imaginary part of a complex number vanishes. This entails the following two drawbacks when handling real valued analytic functions as a special case of analytic functions with complex coefficients:
+The complex numbers play a very important role in the theory of the analytic functions. This importance will only be partially reflected in our implementation. The reason is that equality is not computable. This means that it can not be checked whether the imaginary part of a complex number vanishes. This entails the following two drawbacks when handling real valued analytic functions as a special case of analytic functions with complex coefficients:
 \begin{itemize}
 \item Since we can not detect whether a sequence is really real valued, all operations would have to be carried out with the complex series with vanishing imaginary part. This means we would spend a lot of time on unnecessary operations of adding and multiplying zeros.
 \item For similar reasons, we would have to output complex numbers upon real input. This can not easily be fixed, since there is no canonical way to convert a complex number to a real (compare \cref{}).
@@ -511,7 +518,7 @@ The implementations of this class are very straight forward, and can easily be u
 
 \subsection{The class \code{coeff\_fetcher}}
 
-The class \code{coeff\_fetcher} is a helper class to enable caching of the coefficient values in \func{POWERSERIES} that also works if the \func{POWERSERIES} is declared a constant. Since the class \code{coeff\_fetcher} is only a helper class and should not be available to the user and will be put in a anonymous namespace.
+The class \code{coeff\_fetcher} is a helper class to enable caching of the coefficient values in \func{POWERSERIES} that also works if the \func{POWERSERIES} is declared a constant. Since the class \code{coeff\_fetcher} is only a helper class and should not be available to the user and is put in a anonymous namespace.
 
 To explain the use of the class \code{coeff\_fetcher}, consider the product \code{P*Q} of two power series \code{P} and \code{Q}. Each time we call \code{(P*Q).get\_coeff(n)}, the convolution of the power series is calculated, which involves \code{n} multiplications and \code{n} additions. There are cases, where the same coefficient is needed multiple times, for example if we want to evaluate the powers \code{P}$^i$ of some power series. In this case it would be more efficient, to remember the coefficients and not to recompute them each time.
 
