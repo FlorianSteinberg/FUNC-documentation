@@ -4,8 +4,11 @@
 %\usepackage[ngerman]{babel}
 \usepackage{xspace,listings,color}
 \usepackage[colorlinks=true]{hyperref}
-\usepackage{amsmath, amssymb}
-\usepackage{cleveref,cite}
+\usepackage[all]{xy}
+\usepackage{amsmath, amssymb, url}
+\usepackage{cleveref,cite, enumitem}
+
+\bibliographystyle{amsalpha}
 
 \definecolor{commentgray}{rgb}{0.4,0.4,0.4}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
@@ -36,6 +39,7 @@
 \DeclareMathOperator{\NN}{\ensuremath{\mathbb{N}}\xspace}
 \DeclareMathOperator{\RR}{\ensuremath{\mathbb{R}}\xspace}
 \DeclareMathOperator{\CC}{\ensuremath{\mathbb{C}}\xspace}
+\DeclareMathOperator{\can}{\ensuremath{\mathcal{C}}\xspace}
 
 \newcommand{\irram}{\texttt{iRRAM}\xspace}
 \newcommand{\irrams}{\texttt{iRRAM}s\xspace}
@@ -61,7 +65,9 @@ This text is meant to be a documentation of an expansion of the \cc library \irr
 
 \temp{For the time being, \irram is still in development. Thus some details may, and some hopefully will change. We will try to mark all parts of the text which seem likely to become irrelevant or incorrect in the future red. More general we colour all parts, that are temporary. Ideally these sections should vanish sometime.}
 
-The paper is divided into \temp{a number of} parts. The first part serves to lay down the aspects of computability theory which are essential to the program but are not expected to be known by the reader. In the second part the we will describe some parts of \irram which can not be found in its documentation, but are essentially to what we want to do. The third part presents some parts of the \ccOx standard template library needed and then changes over to describes the key features and functionalities of the implementation. In the last chapter we will address some shortcomings and possible future improvements.
+The paper is divided into \temp{a number of} parts. The first part serves to lay down the aspects of computability theory which are essential to the program but are not expected to be known by the reader. In the second part the we will describe some parts of \irram which can not be found in any of the documentations, but are essentially to what we want to do. The third part presents some parts of the \ccOx standard template library needed and then changes over to describes the key features and functionalities of the implementation. In the last chapter we will address some shortcomings and possible future improvements.
+
+As we describe an implementation, we choose a very informal style of writing. No definitions, lemmatas and theorems even in the mathematical parts. Instead aim to make the text accessible by use of short chapters with descriptive names and many cross-references. \temp{Maybe we might add an index, lateron.}
 
 \part{Higher type computability theory}
 
@@ -73,40 +79,73 @@ Let $B(x,r)$ denote the open disk of radius $r\in\RR^+$ around some $x\in \CC$ a
 
 Since $f$ is analytic of an open superset of the unit disc, there is uniquely determined by the series of its Taylor coefficients in zero, which has a radius of convergence strictly larger than $1$. In the following, we will denote the series of Talyor coefficients of $f$ in zero by $(a_n)_{n\in \NN}$. It can be expressed in terms of the values of $f$s derivatives in zero, or by Cauchy's differentiation formula:
 \[ a_n = \frac{f^{(n)}(0)}{n!} = \frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda. \]
-It is well known, that this series is again computable, if the analytic function $f$ is (see for example \cite[Chapter 1.2, Proposition 1]{MR1005942}).
+It is well known, that this series is again computable, if the analytic function $f$ is (see for example \cite[Chapter 1.2, Proposition 1]{MR1005942}). Also the inverse is true: Given some series $\overline b = (b_n)_{n\in \NN}$ whose radius of convergence $R$ is strictly larger than $1$, one can easily construct an algorithm computing the function
+\[ f_{\overline b}: B(0,R) \to \CC, ~ x\mapsto \sum_{n\in \NN} b_n x^n. \]
+Thus the function $f$ is computable if and only if its series of Taylor coefficients in zero is.
+
+The above can be interpreted as statement about an operator from a suitable space of functions to a space of sequences and its inverse. We asserted, that those operators preserve computability point wise. Unfortunately this does not imply their computability: If the series $(b_n)_{n\in \NN}$ is considered as input instead of being fixed, an algorithm computing the evaluation fails to exist. To construct the algorithms for a fixed series, we had to resort to information about it that can not be extracted from it in a computable way.
+
+This is a very unpleasant fact: We want to represent analytic functions by their power series, since many manipulations can then be carried out efficiently (consider for example differentiation). But by the above we will not be able to provide an algorithm that evaluates an arbitrary function! Fortunately, this problem can be solved by manually enriching each function (or series) by a manageable set of additional Information. A more detailed presentation of this can be found in \cite{Mue95}, where also a set of sufficient information is specified.
+
+We now proceed to discuss an adequate format for this additional information in our setting (which was already suggested in \cite{gevrey}).
 
 
 \subsection[The constants k and A]{The constants $k$ and $A$}\label{sec: The constants k and A}
 
-Unfortunately it is not possible to evaluate such a function effectively without further information. We additionally need two constants $k$ and $A$. $k$ will be such, that $r:=\sqrt[k]{2}$ is still smaller than the radius of convergence of $(a_n)_{n\in \NN}$ and $A$ such that for all $n\in \NN$
-\[ |a_n|  r^n \leq A. \]
-Since we demanded a convergence radius strictly larger than 1, constants like this will always exist.
+Consider a sequence $\overline a = (a_n)_{n\in \NN}$, such that the radius of convergence $R$ of the sequence is strictly larger than $1$ and let $f_{\overline a}$ denote the function
+\[ f_{\overline a}: B(0,R) \to \CC,~ x \mapsto \sum_{n\in \NN} a_n x^n. \]
+We will always be able to find two positive integer constants $k$ and $A$ with the following properties:
+\begin{itemize}
+\item $r:=\sqrt[k]{2}$ is strictly smaller than the radius of convergence $R$ of $(a_n)_{n\in \NN}$
+\item $|a_n|  r^n \leq A$ for all $n\in \NN$.
+\end{itemize}
+We briefly discuss how these constants can be found: Since the radius of convergence of $(a_n)_{n\in \NN}$ is assumed to be strictly larger than $1$, and $r_k:=\sqrt[k] 2$ goes to $1$ as $k$ goes to infinity, it is possible to choose $k$ big enough for $r_k$ to be in between $1$ and the radius of convergence. Now fix such an $k$ and abbreviate $r_k$ as $r$. Consider the function
+\[ f_{\overline a}|_{\{z:|z| = r\}}. \]
+Since this is a continuous function on a compact domain, it will be bounded. Let $A$ be a bound of this function. The Cauchy differentiation formula assures, that
+\[ |a_n |=  \left|\frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda\right| \leq \frac A {r^n}, \]
+thus $A$ is as desired.
 
-We will briefly discuss how these constants can be found: Since the radius of convergence of $f$ is assumed to be strictly larger than $1$, and $r:=\sqrt[k] 2$ goes to $1$ as $k$ goes to infinity, it is possible to choose $k$ big enough for $r$ to be in between $1$ and the radius of convergence. Now fix such an $k$. Consider the function
-\[ f|_{\{z:|z| = r\}}. \]
-Since this is a continuous function on a compact domain, it will be bounded. If $A$ is a bound of this function, the Cauchy differentiation formula gives:
-\[ |a_n |=  \left|\frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda\right| \leq \frac A {r^n} \]
-Thus $A$ is as desired.
-
-Using these constants, we can obtain a tail estimate:
+The constants $k$ and $A$ enable us to obtain a tail estimate:
 \[ \left|\sum_{n \geq N} a_n z^n\right| \leq A \frac{(|z|/r)^N}{1- |z|/r}. \]
-In particular we get a bound for $f$ on the unit disc: If $|z|\leq 1$, we get:
-\[ |f(z)| \leq A\frac r{r-1}. \]
-More information on how to calculate these constants (for example for the product of two such functions) can be found in \cite{gevrey}. The most important part of the source for our intentions will be Theorem 3.3. The proof of this Theorem in particular specifies how constants $k'$ and $A'$ for the derivative $f'$ can be found, namely:
+Since $r$ is strictly larger than $1$, the right hand side will tend to zero, if $|z|$ is smaller than one. This allows us to evaluate the function $f_{\overline a}$ on $\overline{B(0,1)}$: Given a complex number $z$, and a precision $p$, we first find a $N$ large enough, that $\frac A{r^N-r^{N-1}}$ is smaller than half the error. Then we evaluate the Polynomial $\sum_{n = 0}^N a_n x^n$ with precision greater than half the error.
+
+It is obvious, that the constants $k$ and $A$ are not uniquely determined: They can always be increased and will still do. But if we fix either one of them, there a smallest possible value for the other. It is not always clear, what the best choice is. Consider for example polynomials with coefficients from $[0,1]$: Since these are whole functions, we can always choose $k=1$. But if we do so, $A$ will have to majorize the polynomial on the set $\{z\mid |z| =2\}$, thus $A$ will in general be of the order of $2^n$, where $n$ is the degree of the polynomial. On the other hand, if we choose $k$ to be the degree of the polynomial, then $A$ too will be of the order of the degree.
+
+\subsection[Enriching the representation]{Enriching the representation $\rho_{\mathrm{dy}}^{2\omega}$}
+
+We start by recalling some basic facts about representations: A representation $\rho$ of a set $X$ is a partial surjective mapping from the cantor space $\can = \{0,1\}^\omega$ to $X$. Elements of $\rho^{-1}(x)$ are called \emph{names} of $x$. The standard representation $\rho_{\mathrm{dy}}$ of $\RR$ is given defined as follows: $\rho_{\mathrm{dy}}(w) = x$ if and only if $w$ encodes a sequence $z_n$ of integers, such that $\left|x - \frac{z_n}{2^{n+1}}\right| \leq 2^n$. Given representations $\rho_i$ of sets $X_i$ ($i\in \NN$) it is possible to construct a representation $\prod_{i\in \NN} \rho_i$ of $\prod_{i\in \NN} X_i$ (using some computable, bijective function $\NN\times\NN\to\NN$), and also a representation $\rho_1 \times \rho_2$ of $X_1 \times X_2$. The standard representation of $\CC \cong \RR^2$ is $\rho^2_{\mathrm{dy}} = \rho_{\mathrm{dy}} \times \rho_{\mathrm{dy}}$.
+
+If $\rho$ is a representation of a set $X$, an element $x$ of $X$ is called $\rho$-\emph{computable}, if there is a name $w$ of $x$ and a Turing-machine that returns upon input of an integer $n$ the $n$-th entry of $w$. For the standard representations of $\RR$ and $\CC$ this leads to the standard notions of computability. There is a notion of computability of functions on cantor space, and it can be transferred to arbitrary represented sets: If $\nu$ is another representation of some other set $Y$, a function $f:X\to Y$ is called $\rho\to\nu$-computable, if there is a computable realizer, that is a function $F:\can\to\can$ such that the following diagram is commutative:
+\[ \begin{xy}
+\xymatrix{X\ar[r]^f & Y \\ \can \ar[r]_F\ar[u]^\rho & \can \ar[u]_\nu}
+\end{xy}. \]
+
+We get a representation $\rho^{2\omega}_{\mathrm{dy}}$ of our space $C^\omega_1$, naming $f$ the same as the sequence $(a_n)_{n\in \NN} \in \CC^\omega = \prod_{i\in \NN}\CC$. Now we can reword the comments from the beginning of the section as follows: The function
+\[ \mathrm{ev}: C^\omega_1\times \CC \to \CC, ~ (f,x) \mapsto f(x) \]
+is not $\rho^{2\omega}_{\mathrm{dy}}\times \rho^2_{\mathrm{dy}}\to\rho^2_{\mathrm{dy}}$-computable, but we can fix this by considering a slightly adjusted representation $\pi$, that will precede a $\rho^{2\omega}_{\mathrm{dy}}$ name of a function $f$ by two integers $k$ and $A$ as described in the subsection above (we skipped some technical details here. For example $k$ should be encoded in unary and $A$ in binary). \temp{Do we really need the content of this subsection up to now?}
+
+This adaptation does not only render the evaluation computable, but will also make a lot of other operations polytime computable. A more elaborate presentation of this can be found in \cite{gevrey} (where also the term polytime is made explicit). In particular in Theorem 3.3 of \cite{gevrey} the following operations on analytic functions are shown to be polytime computable with respect to the adjusted representation:
+\begin{enumerate}
+\item[\itshape{a)}] Evaluation as discussed above.
+\item[\itshape{b)},\itshape{c)}] Addition and multiplication.
+\item[\itshape{d),e)}] Differentiation and anti-differentiation.
+\item[\itshape{f)}] Parametric maximization. \temp{This needs to be explained a little closer.}
+\end{enumerate}
+The main work is to work out bounds for the constants $k$ and $A$ of the new functions. This requires multiple technical Lemmata.
+
+\subsection{A Lipschitz bound}
+
+Of course the zero-th tail estimate can be interpreted as a bound of $\|f\|_\infty$. Since any bound on the maximum norm of the derivative of a function is a Lipschitz constant of said function, this allows us to easily extract a Lipschitz constant: From the proof of Theorem 3.3 in \cite{gevrey} can be seen, that the constants $k'$ and $A'$ for the derivative $f'$ can be chosen as:
 \[ k' := 2 k \]
 and
 \[ A' := \left\lceil \frac{A}{r} \left(1+ \frac{2k}{e \ln(2)}\right)\right\rceil. \]
-Since any bound of $f'$ on the unit disc is also a bound of the Lipschitz constant of $f$, this allows us to explicitly calculate a Lipschitz constant
+Together with the tail estimate, we conclude, that
 \[ L := \left\lceil A \frac{\left(1 + \frac{2k}{e\ln(2)}\right)}{r-\sqrt{r}}\right\rceil \]
-for $f$ with very little computational effort.
-
-\temp{We have used the ceiling function above. In terms of computable analysis, this function is not well behaved (since it is not continuous, it will not be computable). Thus we will use the function $x \mapsto \ir{round2}(x) +1$ as a replacement. Here \ir{round2}() is a multivalued function already implemented in \irram.}
-
-We can express this in the framework of representations: define a sequence $\overline a$ to be a name of some function $f\in C^\omega(\overline{B(0,1)})$, if 
+is a Lipschitz constant. Although the ceiling function is not computable, we can calculate a number which will either equal $L$ or $L+1$ with very little computational effort.
 
 \part{\irram}
 
-In this part, we are going to describe some key features of the \cc library \irram for exact real arithmetic. We do not claim our depiction to be complete or self-contained. Instead we restrict ourselves to those parts of \irram that are of importance for us, and can neither be found in \cite{} nor in \cite{} \temp{yet?}.
+In this part, we are going to describe some key features of the \cc library \irram for exact real arithmetic. We do not claim our depiction to be complete or self-contained. Instead we restrict ourselves to those parts of \irram that are of importance for us, and can neither be found in the official \irram documentation \cite{Muller2009}, nor in the incomplete html-documentation \cite{Muller2001-2003} or \temp{the draft} \cite{Muller2013} \temp{(yet?)}.
 
 \section{Basic functionalities}
 
@@ -129,9 +168,9 @@ At first glance, this approach seems to be very time consuming: The whole comput
 \item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is re-evaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
 \end{itemize}
 
-The problem described in the last bullet can partially be eliminated by dividing the tasks into two sub-programs. However, as mentioned above, this does not effect the asymptotic running time, and we thus will not go into it in more detail. Instead we will go into the problem discussed in the first bullet in more detail in the oncoming section. \temp{Note, that the content of the remaining bullet is very closely related. It may not be addressed on its own.}
+The problem described in the last bullet can partially be eliminated by dividing the tasks into two sub-programs. However, as mentioned above, this does not effect the asymptotic running time, and we thus will not go into it in more detail. Instead we will go into the problem discussed in the first bullet in more detail in the oncoming section. \temp{Note, that the content of the remaining bullet is very closely related. It may or may not be addressed on its own.}
 
-Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programming language, it is often possible for the user to do things he is not really supposed to do.
+Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programming language. This means, that it is often possible for the user to do things he is not really supposed to do.
 
 \subsection{Output}
 
@@ -159,7 +198,7 @@ Lets assume the operator \code{<<} is called with some \ir{orstream} \code{ors} 
 
 If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameters \code{x} and \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}, but at least $9$ characters. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
 
-We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result could be confusing for the user. This is put down in red, since it might be considered a bug and removed in future versions.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
+We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result can be confusing for the user.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
 
 The remaining output functions simply call the function \ir{swrite} with the desired precision and then hand the string to \irrams standard \ir{orstream} \ir{cout}. Thereby bypassing \ir{cout}s standard output precision.
 
@@ -168,7 +207,7 @@ The remaining output functions simply call the function \ir{swrite} with the des
 
 \subsection{The class \ir{REAL}}
 
-The data type \ir{REAL} is the heart of \irram. The class models real numbers via Intervals. A overview over the main functionalities can be found in \cite{}. We will take a closer look at the implementation. The most important members of the class \ir{REAL} are:
+The data type \ir{REAL} is the heart of \irram. The class models real numbers via Intervals. A overview over the main functionalities can be found in \cite{Muller2013}. We will take a closer look at the implementation. The most important members of the class \ir{REAL} are:
 \begin{description}
 \item[bla:] A pointer to an MP object.
 \item[blabla:]
@@ -176,9 +215,11 @@ The data type \ir{REAL} is the heart of \irram. The class models real numbers vi
 
 \subsection{The class \ir{INTEGER}}
 
-As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int}, is that there is no restriction on the size of the Integer. The main drawback is, that the size and speed. Thus it should only be used, when an unbounded size is really necessary.
+As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int}, is that there is no restriction on the size of the Integer. The main drawback is the size and speed. Thus it should only be used, when an unbounded size is really necessary.
 
-Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: The constants k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). We note, that there already exist limitations of this kind in other parts of \irram. For example in \cite{} on page \ref{} a similar restriction is implied. It would be interesting to compare those restrictions in their severity.}
+Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: The constants k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). It might be necessary and would be interesting to investigate the severity of this limitation. Also it is not clear to the author whether similar restrictions do already exist in other parts of \irram. If so it would be interesting to compare them.}
+
+\ref{}
 
 \temp{describe how INTEGER and REAL interact}
 
@@ -212,10 +253,10 @@ COMPLEX power(const COMPLEX&, const COMPLEX&);
 COMPLEX power(const COMPLEX&, const int);
 \end{lstlisting}
 were added. The implementations are slightly adjusted copies of those of the real counterparts.
-\item[output:] The operator \ir{<<} was overloaded. The following conventions were established:
+\item[output:] The operator \ir{<<} was overloaded. We thereby followed the conventions:
 \begin{itemize}
-\item The precision will be interpreted point wise. This means, both the real and the imaginary part will be printed with the specified precision. This corresponds to the use of the supremum norm on $\CC = \RR^2$.
-\item Complex numbers will be coated in parentheses. This is to avoid confusion. For example the attempt to output a linear monomial via a template as follows:
+\item The precision is to be interpreted point wise. This means, both the real and the imaginary part are to be printed with the specified precision. This corresponds to the use of the supremum norm on $\CC = \RR^2$.
+\item Complex numbers are to be coated in parentheses. This is to avoid confusion. For example the attempt to output a linear monomial via a template as follows:
 \begin{lstlisting}
 template<class T>
 void out(const T& x) {
@@ -223,7 +264,7 @@ void out(const T& x) {
 }
 \end{lstlisting}
 would otherwise lead to ambiguous (or wrong) output.
-\item If the imaginary part of the number is smaller than the desired precision, only the real part will be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same procedure for vanishing real part.
+\item If the imaginary part of the number is smaller than the desired precision, only the real part is to be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same procedure for vanishing real part.
 \end{itemize}
 The other standard output operators, in particular \ir{rwrite} were also overloaded.
 \end{description}
@@ -242,20 +283,23 @@ We aim to implement a type for analytic functions in \irram, which is not yet pr
 
 \section{Tools provided by the \ccOx standard template library}
 
+In this section we will introduce those tools the \ccOx standard template library provides, which we will use extensively. The information presented was gathered from various web pages. Some of the most frequented sites were \cite{cppreference} and \cite{cplusplus}, many of the discussions on the site \cite{stackoverflow} were very helpful. Last but not least, Carsten Rösnick was of great help by hinting at what to look for.
+
 \cc provides four kinds of functional objects: functions, member functions, function pointer and member function pointer. Since the first two are very common, we assume the reader is familiar with them. However, it is important to note that a function pointer can only point at functions that where created outside of the main program. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions.
 
 Member function pointer do actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. But using member functions to achieve the flexibility we desire would be very involved, luckily for us \ccOx added improved syntax for exactly this. In the following sections review these tools.
 
 \subsection{\code{std::function}s}\label{sec: std::functions}
 
-The std::function template is a general-purpose polymorphic function wrapper (according to cppreference.com). We will find \code{std::function}s to be highly useful. But it will be not until we learn about the \cc lambda calculus, that we can grasp their whole potential. Thus the description in this chapter might appear somewhat unspectacular. A \code{std::function} can be defined by
+The std::function template is a general-purpose polymorphic function wrapper (according to \cite{cppreference}). We will find \code{std::function}s to be highly useful. But it will be not until we learn about the \cc lambda calculus, that we can grasp their whole potential. Thus the description in this chapter might appear somewhat unspectacular. A \code{std::function} can be defined by
 \begin{lstlisting}
 std::function<RESULT(PARAM)> f;
 \end{lstlisting}
 
 A std::function can be evaluated like a function, and defined from a function pointer, as the following short example shows:
 \begin{lstlisting}
-#include<functional>
+#include <iostream>
+#include <functional>
 
 using std::function;
 
@@ -266,7 +310,7 @@ double f(int i) {
 int main()
 {
 	function<double(int)> g = f;
-	cout << g(4) << endl;
+	std::cout << g(4) << std::endl;
 	return 0;
 }
 \end{lstlisting}
@@ -446,7 +490,7 @@ We will first discuss the general purpose of the components of this class, and t
 \item[\code{member functions}:] The only member function is the evaluation, which should be self-explanatory.
 \end{description}
 
-The implementations of this class are very straight forward. We will only take a look at the composition, as an example of how to combine shared pointers to \code{std::function}s and the \cc lambda calculus:
+The implementations of this class are very straight forward. We will only take a look at the composition, as an example of how to combine shared pointers to \code{std::function}s and the \cc lambda calculus. For readability we will use the abbreviation \code{alg\_ptr<PARAM, RESULT>} for \code{shared\_ptr<const function<RESULT(const PARAM\&)>}:
 \begin{lstlisting}
 template<class PARAM, class RESULT>
 template<class PAR>
@@ -465,12 +509,12 @@ FUNC<RESULT(PAR)> FUNC<RESULT(PARAM)>::operator () (
 	return FUNC<RESULT(PAR)>(new_algorithm);
 }
 \end{lstlisting}
-Here we used the abbreviation \code{alg\_ptr<PARAM, RESULT>} for \code{shared\_ptr<const function<RESULT(const PARAM\&)>}. First we check, that both the functions have algorithms (line 6). If one of them does not, we return a function without an algorithm. Next we save the algorithms of both functions to local variables (compare the end of \cref{sec: The C++ lambda calculus}). In line 10 we define a new function via the \cc lambda calculus. The lambda expression captures the local variables we defined by copy and returns upon input the composition of the two algorithms. Since the new algorithm owns shared pointers to the algorithms of the functions to be composed, these algorithms will not be deleted before the new algorithm is destroyed. Finally in line 8 we return a function with the composition of the algorithms as algorithm.
+First we check, that both the functions have algorithms (line 6). If one of them does not, we return a function without an algorithm. Next we save the algorithms of both functions to local variables (compare the end of \cref{sec: The C++ lambda calculus}). In line 10 we define a new function via the \cc lambda calculus. The lambda expression captures the local variables we defined by copy and returns upon input the composition of the two algorithms. Since the new algorithm owns shared pointers to the algorithms of the functions to be composed, these algorithms will not be deleted before the new algorithm is destroyed. Finally in line 8 we return a function with the composition of the algorithms as algorithm.
 
 
 \subsection{The class \func{POWERSERIES}}
 
-The class \func{POWERSERIES} is supposed to model formal power series. As such it is a template in the coefficient type, abbreviated by \code{c\_t}. We want to be able to compute sums and products of power series, therefore the coefficient type needs to have an addition and an multiplication defined. More specific \code{c\_t} needs to be a unital ring in the sense, that the corresponding standard operators need to be defined (constructors from positive integers, $+$, $*$, additive inverse). 
+The class \func{POWERSERIES} is supposed to model formal power series. As such it is a template in the coefficient type, abbreviated by \code{c\_t}. We want to be able to compute sums and products of power series, therefore the coefficient type needs to have an addition and an multiplication defined. More specific \code{c\_t} needs to be a unital ring in the sense, that the corresponding standard operators need to be defined (constructor from positive integers, $+$, $*$, additive inverse). 
 \begin{lstlisting}
 template<class c_t>
 class POWERSERIES {
@@ -504,7 +548,7 @@ We describe its components:
 \item[\code{member functions}:] The member functions should be self explanatory.
 \end{description}
 
-The implementations of this class are very straight forward, and can easily be understood from the source code (assuming, that one has read the example implementations of the classes before).
+The implementations of this class are very straight forward, and can easily be understood from the source code (assuming, that one has read the example implementations of the classes before) or reinvented.
 
 
 \section{A class for Taylor series}
@@ -558,14 +602,14 @@ coeff_fetcher<c_t>* get_coeffs = new coeff_fetcher<c_t>(this);
 \end{lstlisting}
 which creates, upon construction of a power series, a appendant \code{coeff\_fetcher}. In the member function \code{get\_coeff(n)}, we will then replace the call \code{(*coeff)[n]} by \code{get\_coeffs.get\_coeff(n)}. Secondly, \code{coeff\_fetcher} will have to be declared a friend of \func{POWERSERIES} in order to be able to access the private member \code{coeff}. And finally, the class \func{POWERSERIES} will need an explicit destructor which deletes the associated \code{coeff\_fetcher}.
 
-We end the section with a remark concerning the constructors from the section before. In some cases, for \code{coeff\_fetcher} to work properly, these constructors are essential. For assume that a power series is declared and initialized from an existing one:
+We end the section with a remark concerning the constructors from the section before. In some cases, for \code{coeff\_fetcher} to work properly, additional constructors are essential. For assume that a power series is declared and initialized from an existing one:
 \begin{lstlisting}
 POWERSERIES<REAL> exp_pwr([](const unsigned int& n) -> REAL {
 	return 1/REAL(faculty(n));
 });
 POWERSERIES<REAL> P = exp_pwr;
 \end{lstlisting}
-If there is no constructor that constructs a power series from an existing one, this will simply copy the power series to a different location in the memory. Thus \code{P} will point to the same \code{coeff\_fetcher} \code{exp\_pwr} points to. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. Luckily if a constructor exists it will be called in case of such an initialisation, and this will resolve the error. This remark is of course due to the fact, that \code{coeff\_fetcher} was implemented before the constructor.
+If there is no constructor that constructs a power series from an existing one, this will simply copy the power series to a different location in the memory. Thus \code{P} will point to the \code{coeff\_fetcher} which \code{exp\_pwr} points to. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. Luckily if a constructor exists it will be called in case of such an initialisation, and this will resolve the error. Strangely this is not true, if there is a suitable template available. Which means we need to add another explicit constructor.
 
 \subsection{\temp{Possible future extensions}}
 
