@@ -109,8 +109,6 @@ The constants $k$ and $A$ enable us to obtain a tail estimate:
 \[ \left|\sum_{n \geq N} a_n z^n\right| \leq A \frac{(|z|/r)^N}{1- |z|/r}. \]
 Since $r$ is strictly larger than $1$, the right hand side will tend to zero, if $|z|$ is smaller than one. This allows us to evaluate the function $f_{\overline a}$ on $\overline{B(0,1)}$: Given a complex number $z$, and a precision $p$, we first find a $N$ large enough, that $\frac A{r^N-r^{N-1}}$ is smaller than half the error. Then we evaluate the Polynomial $\sum_{n = 0}^N a_n x^n$ with precision greater than half the error.
 
-It is obvious, that the constants $k$ and $A$ are not uniquely determined: They can always be increased and will still do. But if we fix either one of them, there a smallest possible value for the other. It is not always clear, what the best choice is. Consider for example polynomials with coefficients from $[0,1]$: Since these are whole functions, we can always choose $k=1$. But if we do so, $A$ will have to majorize the polynomial on the set $\{z\mid |z| =2\}$, thus $A$ will in general be of the order of $2^n$, where $n$ is the degree of the polynomial. On the other hand, if we choose $k$ to be the degree of the polynomial, then $A$ too will be of the order of the degree.
-
 \subsection[Enriching the representation]{Enriching the representation $\rho_{\mathrm{dy}}^{2\omega}$}
 
 We start by recalling some basic facts about representations: A representation $\rho$ of a set $X$ is a partial surjective mapping from the cantor space $\can = \{0,1\}^\omega$ to $X$. Elements of $\rho^{-1}(x)$ are called \emph{names} of $x$. The standard representation $\rho_{\mathrm{dy}}$ of $\RR$ is given defined as follows: $\rho_{\mathrm{dy}}(w) = x$ if and only if $w$ encodes a sequence $z_n$ of integers, such that $\left|x - \frac{z_n}{2^{n+1}}\right| \leq 2^n$. Given representations $\rho_i$ of sets $X_i$ ($i\in \NN$) it is possible to construct a representation $\prod_{i\in \NN} \rho_i$ of $\prod_{i\in \NN} X_i$ (using some computable, bijective function $\NN\times\NN\to\NN$), and also a representation $\rho_1 \times \rho_2$ of $X_1 \times X_2$. The standard representation of $\CC \cong \RR^2$ is $\rho^2_{\mathrm{dy}} = \rho_{\mathrm{dy}} \times \rho_{\mathrm{dy}}$.
@@ -131,7 +129,14 @@ This adaptation does not only render the evaluation computable, but will also ma
 \item[\itshape{d),e)}] Differentiation and anti-differentiation.
 \item[\itshape{f)}] Parametric maximization. \temp{This needs to be explained a little closer.}
 \end{enumerate}
-The main work is to work out bounds for the constants $k$ and $A$ of the new functions. This requires multiple technical Lemmata.
+The main effort is to work out bounds for the constants $k$ and $A$ of the new functions. This requires multiple technical Lemmata.
+
+\subsection{Choices}
+
+It is obvious, that the constants $k$ and $A$ are not uniquely determined: They can always be increased and will still do. But if we fix either one of them, there is a smallest possible value for the other. In many cases, multiple choices of the Parameters are available: Consider for example polynomials with coefficients from $[0,1]$: Since these are whole functions, we can always choose $k=1$. But if we do so, $A$ will have to majorize the polynomial on the set $\{z\mid |z| =2\}$, thus $A$ will in general be of the order of $2^n$, where $n$ is the degree of the polynomial. On the other hand, if we choose $k$ to be the degree of the polynomial, then $A$ too will be of the order of the degree.
+
+We can not give a decision procedure, but there is a guideline: We mentioned that in the new representation $k$ is encoded in unary, while $A$ is encoded in binary. This implicates, that all operations are shown to be computable in time polynomial in the output precision plus $k + \log(A)$. Thus it is a good idea to optimize the asymptotical behaviour of this parameter. However, this does not decide which of the to two options given in the preceding example is to prefer: In both cases the parameter $k+\log(A)$ grows linearly with the degree of the Polynomial.
+
 
 \subsection{A Lipschitz bound}
 
@@ -174,29 +179,14 @@ Another point is, that programs for \irram are written in \cc. Since \cc is a ve
 
 \subsection{Output}
 
-We did already mention, that output can be a problem and that one should use the output methods provided by \irram. To cope with the difficulties of duplicated output, \irram has its own class of output streams \irram::\ir{orstream}, which replaces the standard output streams. The following can be used for output:
+We did already mention, that output can be a problem and that one should use the output methods provided. \irram offers the following functions for output:
 \begin{itemize}
-\item Any \irram::\ir{orstream} via the overloaded \ir{<<} operators. In particular the standard one \irram::\ir{cout}.
-\item The functions \irram::\ir{rwrite}, \irram::\ir{rwritee} and \irram::\ir{rshow}.
+\item The functions \irram::\ir{rwrite}, \irram::\ir{rwritee}.
 \item The function \irram::\ir{rfprint}.
+\item The function \irram::\ir{rshow}.
+\item Any \irram::\ir{orstream} via the overloaded \ir{<<} operators. In particular the standard one \irram::\ir{cout}.
 \end{itemize}
-In the following we will leave the preceding \irram::\ir{} away. This coincides with the syntax used inside of \irram programs. One should note, that \ir{cout} differs from \code{std::cout}: For example pointers will be output as $1$ if they point somewhere and as $0$ if they do not. This is important, since pointer addresses can change in reiterations, which could lead to inconsistent output. Additionally \ir{cout} might change the path of computation, since it can trigger reiterations and there are situations where \ir{cout} does not lead to output at all (for example in passages where reiterations might be triggered). Thus when changing \irram itself, it is sometimes a good idea to still use \code{std::cout} for debugging purposes.
-
-The first point in the list above does play a special role here, since it is used by all the others. They call the function \ir{swrite}, which prints a \ir{REAL} to a string and then output this value through the \ir{cout} by using the \ir{<<} operator.
-
-Thus we will first take a closer look at the class \ir{orstream}. The main components of an \ir{orstream} are:
-\begin{description}
-\item[\code{target}:] An \code{std::ostream} pointer, used for output.
-\item[\code{requests}:] A static but thread specific request counter.
-\item[\code{outputs}:] A static but thread specific output counter.
-\item[\code{real\_w}:] A standard value for the output width of real numbers.
-\item[\code{real\_f}:] \ref{}.
-\end{description}
-The output operator \code{<<} is defined for most standard data types of \cc, and for the \irram specific data types like \ir{REAL}, \ir{DYADIC}, \ir{RATIONAL}, \ir{INTEGER} and \ir{COMPLEX} (which will be explained in more detail in \cref{sec: The class COMPLEX}, or can be found in \cite{}).
-
-Lets assume the operator \code{<<} is called with some \ir{orstream} \code{ors} and some standard \cc data type \code{x}. \code{ors} will then increase the counter \code{requests}, check if \code{requests} is bigger than \code{outputs}, and if so to pass \code{x} to the \ir{std::ostream} pointed at by target and also increase the counter \code{outputs}. If now a reiteration occurs, the counter \code{requests} will be reset, but the counter \code{outputs} will be kept. This leads to the following behaviour: In the next iteration first \code{outputs} outputs will be ignored, these are evidently exactly those which where already printed in one of the earlier iterations.
-
-If the operator \code{<<} is called with some \code{x} of \irram specific data type, then \code{ors} will call the function \ir{swrite} with parameters \code{x} and \ir{real\_w}, which will print \code{x} to a string \code{xs} of length \ir{real\_w}, but at least $9$ characters. Then \code{ors} will call \code{ors << xs}. Since the precision of \code{x} may not suffice to extract a string representing \code{x} of the desired length, \ir{swrite} might trigger a reiteration.
+A description of how the output functions are to be used can be found in \cite[\temp{Chapter 34.8.}]{Muller2013}.
 
 We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result can be confusing for the user.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
 
@@ -215,7 +205,7 @@ The data type \ir{REAL} is the heart of \irram. The class models real numbers vi
 
 \subsection{The class \ir{INTEGER}}
 
-As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int}, is that there is no restriction on the size of the Integer. The main drawback is the size and speed. Thus it should only be used, when an unbounded size is really necessary.
+As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int},is that there is no restriction on the size of the Integer. The main drawbacks are size and speed. Thus it should only be used, when an unbounded size is really necessary.
 
 Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: The constants k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). It might be necessary and would be interesting to investigate the severity of this limitation. Also it is not clear to the author whether similar restrictions do already exist in other parts of \irram. If so it would be interesting to compare them.}
 
@@ -264,7 +254,7 @@ void out(const T& x) {
 }
 \end{lstlisting}
 would otherwise lead to ambiguous (or wrong) output.
-\item If the imaginary part of the number is smaller than the desired precision, only the real part is to be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same procedure for vanishing real part.
+\item If the imaginary part of the number is smaller than the desired precision, only the real part is to be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same for small real part. Of course, if both real and imaginary part are small, the real part is to be printed.
 \end{itemize}
 The other standard output operators, in particular \ir{rwrite} were also overloaded.
 \end{description}
@@ -384,7 +374,7 @@ returns \lq 4.5\rq.
 There are two main sources of errors when handling shared pointers:
 \begin{itemize}
 \item Multiple shared pointers are constructed from the same pointer: In this case each shared pointer keeps its own reference counter. If the first of those counters hits zero, the object will be destroyed. If now a shared pointer following an other reference counter tries to access the object, there will be an error.
-\item Circular ownership relations: for simplicity lets have a look at the case of two lonely shared pointers pointing at each other. Each of the pointers has a reference counter which is one (since they are lonely). now assume we destroy one of them. This will decrease the corresponding reference counter and, since the reference count will hit zero, destroy the other shared pointer. This in turn will decrease its reference counter, which will also hit zero. Therefore it will attempt to destroy the first shared pointer. Which is already destroyed. This will lead to an error.
+\item Circular ownership relations: for simplicity lets have a look at the case of two lonely shared pointers pointing at each other. Each of the pointers has a reference counter which is one (since they are lonely). now assume we destroy one of them. This will decrease the corresponding reference counter and, since the reference count will hit zero, destroy the other shared pointer. This in turn will decrease its reference counter, which will also hit zero. Therefore it will attempt to destroy the first shared pointer. Which will lead to an error, since it has already been deleted.
 \end{itemize}
 
 \section{Some classes of functions and similar objects}
@@ -553,10 +543,69 @@ The implementations of this class are very straight forward, and can easily be u
 
 \section{A class for Taylor series}
 
+\temp{introduce abbreviations.}
+
 \subsection{The class definition}
+
+\begin{lstlisting}
+template<class ARG>
+class BASE_ANAL: public FUNC<ARG(ARG)> {
+	// members:
+		private:
+			// the parameters which determine the function:
+	  			ps_ptr coeff;
+	  			INTEGER k;
+	  			INTEGER A;
+			// additional data, stored to speed things up.
+	  			REAL effective_radius_of_convergence;
+			bool has_better_alg = false;
+			poly_ptr poly = NULL;
+			INTEGER lipschitz;
+			// alg_func_ptr<PARAM, RESULT> algorithm = NULL;
+	// constructors:
+		public:
+			BASE_ANAL();
+			BASE_ANAL(REAL z);
+			BASE_ANAL(
+			const ps& _coeff,
+			const INTEGER& _k,
+			const INTEGER& _A
+		);
+		BASE_ANAL(const POLY<REAL>&);
+	// member functions:
+		public:
+			POLY<REAL> cut_of_at(const unsigned int&) const;
+			ARG operator () (const ARG&) const;
+			virtual void derive(unsigned int);
+			virtual void anti_derive(unsigned int);
+			void has_algorithm(const alg_func<ARG, ARG>&);
+			void restore_alg();
+			void show_info() const;
+		protected:
+			virtual void print(iRRAM::orstream&) const;
+			virtual void print(int precision) const;
+ 	// standard operators:
+		public:
+			BASE_ANAL<ARG>& operator = (const BASE_ANAL<ARG>& f);
+			friend BASE_ANAL<ARG>& operator += (const BASE_ANAL<ARG>&);
+			...
+			friend BASE_ANAL<ARG> operator *<> (
+				const BASE_ANAL<ARG>&,
+				constBASE_ANAL<ARG>&
+			);
+			template<class PAR>
+			BASE_ANAL<ARG> operator () (const BASE_ANAL<ARG>&);
+  	// friends classes:
+   		template<class>
+   		friend class POLY;
+};
+\end{lstlisting}
+
 \subsection{The evaluation}
 
 \section{Some additions}
+
+\subsection{Output}
 
 \subsection{Additional constructors}
 
@@ -602,18 +651,19 @@ coeff_fetcher<c_t>* get_coeffs = new coeff_fetcher<c_t>(this);
 \end{lstlisting}
 which creates, upon construction of a power series, a appendant \code{coeff\_fetcher}. In the member function \code{get\_coeff(n)}, we will then replace the call \code{(*coeff)[n]} by \code{get\_coeffs.get\_coeff(n)}. Secondly, \code{coeff\_fetcher} will have to be declared a friend of \func{POWERSERIES} in order to be able to access the private member \code{coeff}. And finally, the class \func{POWERSERIES} will need an explicit destructor which deletes the associated \code{coeff\_fetcher}.
 
-We end the section with a remark concerning the constructors from the section before. In some cases, for \code{coeff\_fetcher} to work properly, additional constructors are essential. For assume that a power series is declared and initialized from an existing one:
+We end the section with a remark concerning a possible issue with the constructors. A copy constructor is a constructor of type \code{coeff\_fetcher(const coeff\_fetcher<coeff\_type>\&)}. Since this constructor is essential for basic manipulations (for example initialisations) a default copy constructor will be declared by the compiler, if none is declared by the programmer. This default copy constructor will simply copy the object, and will cause problems if used: For assume that a power series is declared and initialized from an existing one
 \begin{lstlisting}
 POWERSERIES<REAL> exp_pwr([](const unsigned int& n) -> REAL {
 	return 1/REAL(faculty(n));
 });
 POWERSERIES<REAL> P = exp_pwr;
 \end{lstlisting}
-If there is no constructor that constructs a power series from an existing one, this will simply copy the power series to a different location in the memory. Thus \code{P} will point to the \code{coeff\_fetcher} which \code{exp\_pwr} points to. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. Luckily if a constructor exists it will be called in case of such an initialisation, and this will resolve the error. Strangely this is not true, if there is a suitable template available. Which means we need to add another explicit constructor.
+Since the default copy constructor will simply copy any member, \code{P} will also hold a pointer to the \code{coeff\_fetcher} which \code{exp\_pwr} uses. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. One might assume, that this problem is solved by the template for a copy constructor we introduced in \cref{sec: Additional constructors}, but it is not: a template will not be accepted as a definition of a copy constructor. The compiler will deliver a default copy constructor, and since this default copy constructor is a better fit for the type than the template, it will also be used. To resolve this, we have to add another constructor.
 
 \subsection{\temp{Possible future extensions}}
 
 It is clear, that this whole chapter should be written in red. For readability we restrain the colouration to the heading.
+\newpage
 
 \bibliography{mybib}{}
 \bibliographystyle{plain}
