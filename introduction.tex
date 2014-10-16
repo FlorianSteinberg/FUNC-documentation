@@ -1,0 +1,13 @@
+%!TEX root = doc.tex
+\section*{\center{An introduction which can be skipped without guilty conscience}}
+	
+	This text is meant to be a documentation of an expansion of the \cc library \irram for exact real arithmetic by a type for real analytic functions.
+	The guideline for explicitness is as follows:
+	A person who is familiar with the the basic notions of real computability theory, and a moderately experienced \cc programmer, should be able, when handed this document and its references, to reproduce (and in particular understand) all the additions done to \irram within a few days.
+	This means we will not describe the added code line by line, but address the main obstacles that arose and explain how they were overcome.
+
+	\temp{For the time being, \irram is still in development. Thus some details may, and some hopefully will change. We will try to mark all parts of the text which seem likely to become irrelevant or incorrect in the future red. More general we colour all parts, that are temporary. Ideally these sections should vanish sometime.}
+
+	The paper is divided into \temp{a number of} parts. The first part serves to lay down the aspects of computability theory which are essential to the program but are not expected to be known by the reader. In the second part the we will describe some parts of \irram which can not be found in any of the documentations, but are essentially to what we want to do. The third part presents some parts of the \ccOx standard template library needed and then changes over to describes the key features and functionalities of the implementation. In the last chapter we will address some shortcomings and possible future improvements.
+
+	As we describe an implementation, we choose a very informal style of writing. No definitions, lemmatas and theorems even in the mathematical parts. Instead aim to make the text accessible by use of short chapters with descriptive names and many cross-references. \temp{Maybe we might add an index, lateron.}

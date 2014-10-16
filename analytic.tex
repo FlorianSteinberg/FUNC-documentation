@@ -1,0 +1,134 @@
+\section{Analytic functions and computability}\label{sec: Analytic functions and computability}
+
+	Let $B(x,r)$ denote the open disk of radius $r\in\RR^+$ around some $x\in \CC$ and $\overline{B(x,r)}$ its closure. The space of functions we are interested in is $C^\omega\big(\overline{B(0,1)}\big)$, that is the functions analytic on a open superset of the closed unit disc. We will abbreviate this space as $C^\omega_1$. For the rest of this section we fix a function $f\in C^\omega_1$.
+
+	Since $f$ is analytic of an open superset of the unit disc, it is uniquely determined by the series of its Taylor coefficients in zero, which has a radius of convergence strictly larger than $1$. In the following, we will denote the series of Talyor coefficients of $f$ in zero by $(a_n)_{n\in \NN}$. It can be expressed in terms of the values of $f$s derivatives in zero, or by Cauchy's differentiation formula:
+	\[ a_n = \frac{f^{(n)}(0)}{n!} = \frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda. \]
+	It is well known, that this series is again computable, if the analytic function $f$ is (see for example \cite[Chapter 1.2, Proposition 1]{MR1005942}). Also the inverse is true: Given some series $\overline b = (b_n)_{n\in \NN}$ whose radius of convergence $R$ is strictly larger than $1$, one can easily construct an algorithm computing the function
+	\[ f_{\overline b}: B(0,R) \to \CC, ~ x\mapsto \sum_{n\in \NN} b_n x^n. \]
+	Thus the function $f$ is computable if and only if its series of Taylor coefficients in zero is.
+
+	The above can be interpreted as statement about an operator from a suitable space of functions to a space of sequences and its inverse.1 We asserted, that those operators preserve computability point wise. Unfortunately this does not imply their computability: If the series $(b_n)_{n\in \NN}$ is considered as input instead of being fixed, an algorithm computing the evaluation fails to exist. To construct the algorithms for a fixed series, we had to resort to information about it that can not be extracted from it in a computable way.
+
+	This is a very unpleasant fact: We want to represent analytic functions by their power series, since many manipulations can then be carried out efficiently (consider for example differentiation). But by the above we will not be able to provide an algorithm that evaluates an arbitrary function! Fortunately, this problem can be solved by manually enriching each function (or series) by a manageable set of additional Information. A more detailed presentation of this can be found in \cite{Mue95}, where also a set of sufficient information is specified.
+
+	We now proceed to discuss an adequate format for this additional information in our setting (which was already suggested in \cite{gevrey}).
+
+	\subsection[The constants k and A]{The constants $k$ and $A$}\label{sec: The constants k and A}
+
+		Consider a sequence $\overline a = (a_n)_{n\in \NN}$, such that the radius of convergence $R$ of the sequence is strictly larger than $1$ and let $f_{\overline a}$ denote the function
+		\[ f_{\overline a}: B(0,R) \to \CC,~ x \mapsto \sum_{n\in \NN} a_n x^n, \]
+		and $f$ its restriction to $\overline{B(0,1)}$. We will always be able to find two positive integer constants $k$ and $A$ with the following properties:
+		\begin{itemize}
+		\item $r:=\sqrt[k]{2}$ is strictly smaller than the radius of convergence $R$ of $(a_n)_{n\in \NN}$
+		\item $|a_n|  r^n \leq A$ for all $n\in \NN$.
+		\end{itemize}
+		We briefly discuss how such constants can be found:
+		Since the radius of convergence of $(a_n)_{n\in \NN}$ is assumed to be strictly larger than $1$, and $r_k:=\sqrt[k] 2$ goes to $1$ as $k$ goes to infinity, it is possible to choose $k$ big enough for $r_k$ to be in between $1$ and the radius of convergence.
+		Now fix such an $k$ and abbreviate $r_k$ as $r$.
+		Consider the function
+		\[ f_{\overline a}|_{\{z:|z| = r\}}. \]
+		Since this is a continuous function on a compact domain, it will be bounded.
+		Let $A$ be a bound of this function.
+		The Cauchy differentiation formula assures, that
+		\[ |a_n |=  \left|\frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda\right| \leq \frac A {r^n}, \]
+		thus $A$ is as desired.
+
+		It is not hard to see, that there exists a machine that given a tripple $((a_n),k,A)$ and oracle access to approximations to some argument $z\in\DD$ returns approximations to $f(z)$.
+		We will elaborate on the runningtime of this algorithm in \cref{c: time bounds}.
+
+	\subsection{A Lipschitz bound}
+
+		Of course the zero-th tail estimate can be interpreted as a bound of $\|f\|_\infty$. Since any bound on the maximum norm of the derivative of a function is a Lipschitz constant of said function, this allows us to easily extract a Lipschitz constant: From the proof of Theorem 3.3 in \cite{gevrey} can be seen, that the constants $k'$ and $A'$ for the derivative $f'$ can be chosen as:
+		\[ k' := 2 k \]
+		and
+		\[ A' := \left\lceil \frac{A}{r} \left(1+ \frac{2k}{e \ln(2)}\right)\right\rceil. \]
+		Together with the tail estimate, we conclude that
+		\[ L := \left\lceil A \frac{\left(1 + \frac{2k}{e\ln(2)}\right)}{r-\sqrt{r}}\right\rceil \]
+		is a Lipschitz constant.
+		Although the ceiling function is not computable, we can calculate a number which will either equal $L$ or $L+1$ with very little computational effort.
+
+	\subsection[Choice of the constants k and A]{Choice of the constants $k$ and $A$}
+
+		It is obvious, that the constants $k$ and $A$ are not uniquely determined: They can always be increased and will still do. But if we fix either one of them, there is a smallest possible value for the other. For concrete functions, it is often the case, that multiple choices of the Parameters are available: Consider for example polynomials with coefficients from $[0,1]$: Since these are whole functions, we can always choose $k=1$. But if we do so, $A$ will have to majorize the polynomial on the set $\{z\mid |z| =2\}$, thus it will in general be of the order of $2^n$, where $n$ is the degree of the polynomial. On the other hand, if we choose $k$ to be the degree of the polynomial, then $A$ too will be of the order of the degree.
+
+		We can not give a decision procedure, but there is a guideline: In \cite{gevrey} it is shown, that many operations on Analytic functions are computable in time polynomial in the output precision plus $k + \log(A)$ (we will come back to this in a little more detail in \cref{}). Thus it seems to be a good idea to optimize the asymptotic behavior of this parameter. However, this does not decide which of the two options given in the preceding example is to prefer: In both cases the parameter $k+\log(A)$ grows linearly with the degree of the Polynomial. In this case, the second possibility was chosen. This decision may be justified by the resulting memory consumption, but was mostly arbitrary.
+
+\newpage
+
+	\subsection{Time bounds for the operations}
+
+		\subsubsection{Evaluation}
+
+			The constants $k$ and $A$ enable us to estimate the size of the tail the infinite sum defining the function $f_{\overline a}$:
+			\begin{equation}\label{eq: tail}
+				\left|\sum_{n > N} a_n z^n\right| \leq A \frac{(|z|/r)^{N+1}}{1- |z|/r}.
+			\end{equation}
+			And, since $r$ is strictly larger than $1$, the right hand side will tend to zero if $|z|$ is smaller than one.
+			This allows us to computably evaluate the function $f$ (the restriction of $f_{\overline a}$ to $\overline{B(0,1)}$):
+			First we insert $|z|\leq 1$ into \cref{eq: tail} and solve the resulting demand
+			\begin{equation*}
+				\left|\sum_{n > N} a_n z^n\right| \leq \frac A {r^{N+1}-r^N} \stackrel!\leq  2^{-n-1}
+			\end{equation*}
+			for $N$.
+			This resulsts in
+			\[ N \geq \left(n+\lb\left(\frac1{1-2^{-\frac1k}}\right) + \lb(A) + 1\right)k +1. \]
+			To bound the second term note, that the function $x\mapsto \lb(1+x)$ is convex, its value in zero is $0$ and its derivative in zero is $\lb(e)$.
+			Thus, for $-1<x$ we have $\lb(1+x)\leq \lb(e)x$.
+			Using this with $x=\frac1{\lb(e)k}$ we get
+			\[ \frac 1{2^{\frac 1k}-1} \leq \frac 1{2^{\lb\left(1+\frac1{\lb(e)k}\right)} - 1} = \lb(e) k \leq 2k \]
+			and therefore
+			\[ \lb\left(\frac1{1-2^{-\frac1k}}\right) = \lb\left(1+\frac1{2^{\frac1k}-1}\right)\leq \lb(1+2k). \]
+			We end up with
+			\[ N = \bigo(k(n+\lb(k)+\lb(A))). \]
+			
+			Next, we need to evaluate the Polynomial $\sum_{i = 0}^N a_i x^i$ with precision greater than half the demanded.
+			Of course, the time needed to do this will depend on the time needed to compute the coefficients $a_i$ and the real number $x$.
+			So let $T_{\seq a}:\NN\times\NN \to \NN$ denote a time bound for the running time of $a_i$.
+			That is: There exists a machine, that given $i$ and $n$ as input, produces a dyadic approximation of $a_i$ with quality $2^{-n}$ and needs less than $T_{\seq a}(i,n)$ steps.
+			Furthermore, assume that for  $T_x:\NN\to\NN$ is a running time of $x$ in the same sense.
+			For simplicity we will always assume all running time bounds to be monotonous in all arguments.
+
+			Note the following:
+			If $T_x$ is a running time bound of $x$ and $T_y$ is a running time bound of $y$, then
+			\begin{itemize}
+				\item a running time bound for $x+y$ is given by
+				\[ T_{x+y}(n) := T_x(n+1)+ T_y(n+1) + O(n) \]
+				where the last term comes from adding the approximations.
+				\item assuming $x,y\leq 1$, a running time bound for $xy$ is given by
+				\[ T_{xy}(n):= T_x(n+1) + T_y(n+1) + O(n\log(n)\log(\log(n))) \]
+				where the last term comes from multiplying the approximations.
+			\end{itemize}
+			By using Horner's Algorithm one can now obtain an running time bound for the evaluation of a polynomial of degree $N$.
+			Computing the required approximations will take time
+			\[ T_{app}(n) = \sum_{i\leq N} T_a(i,n+2i+1) + T_x(N+1) \leq (N+1)T_a(N,n+2N+1) + T_x(N+1). \]
+			Computing an approximation to the function value from the obtained approximations will take $N$ multiplications and $N$ additions, therefore we obtain for the time $T_{cmp}$ needed to do this
+			\[ T_{cmp}(n) =O(N^2\log(N)\log(\log(N))). \]
+			
+			This leaves us with the following time bound for evaluation of the function $f$:
+			\[ T_f(T_{\seq a},k,A,T_x,n) = O(N^2\log(N)\log(\log(N))+ T_a(N,n+2N +1) + T_x(N+1)). \]
+			If we furthermore assume that $T_x= \bigo(n)$ and $T_a = \bigo i+n$ we get
+			\[ T_f(k,A,n) = \bigo(...) \]
+
+		\subsubsection{Evaluation of derivatives}
+
+			From \cite{gevrey} it is known, that for the $d$-th derivative $f^{(d)}$ of the function, we can use the constants $k_d:= 2k$, $A_d :=A 2^{-\frac dk} d^d (1+\lb(e) k)^d$ to accompany the derived series
+			\[ a^{(d)}_i:= \prod_{j=1}^d (j+i)a_{i+d}. \]
+			To find a running time bound for the evaluation of the derivative, we can combine the results from the previous section with the new constants and the updated running time of the sequence.
+			A running time bound for the derived sequence is given by
+			\[ T_{\seq a^{(d)}}(i,n) = T_{\seq a}(i+d, d\cdot \lb(i+d)) + \bigo(d(d+i) \log(d+i)\log(\log(d+i))) \]
+			Considering the new $k$ and $A$ gives a new value $N_d$ for the needed number of coefficients:
+			\[ N_d \geq \left(n + \lb(1+4k) + \lb(A) - \frac dk + d\lb(d) + d\lb(1+\lb(e)k)\right)2k+1, \]
+			thus
+			\[ N_d = \bigo\left(\left(n + \lb(A) + d\lb(k) + d\lb(d)\right)k \right). \]
+			This and the new running time of the series together with the formula from the previous chapter leads to the bound
+			\[ O(N_d^2\log(N_d)\log(\log(N_d))+ T_a(N_d+d,n+2N_d +1) + T_x(N_d+1)) \]
+			for $T_{f^{(d)}}(T_{\seq a},k,A,T_x,n)$
+
+
+		\subsubsection{The Taylor sequence around another point}
+
+			Computing the $d$-th coefficient of the Taylor-sequence of $f$ around a point $x$ can be done by evaluating the $d$-th derivative and dividing by the faculty of $d$.
+			Since computing the faculty of $d$ takes $d$ multiplications of numbers of size smaller than $d$, the time needed can be obtained from the previous chapter by adding another term 
+
+\newpage

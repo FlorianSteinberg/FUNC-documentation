@@ -1,0 +1,26 @@
+%!TEX root = doc.tex
+\section{Higher type complexity theory}
+
+Since we introduced computable functions as being realized by oracle Turing-machines, we need a measure of complexity for those machines. Recall that the running time of an oracle Turing-machine with a fixed oracle is defined very similar to that of an regular Turing-machine, where a query to the oracle is counted as one step (while the writing of the input for the oracle and the reading of the output will commit to the running time). The oracle Turing-machine is then said to have complexity bounded by some function $t:\NN \to \NN$, if the running time is bounded by this function for any fixed oracle.
+
+\subsection{Complexity of functions}
+
+Let $\rho$ and $\nu$ be representations of some sets $X$ and $Y$. The complexity  of a function $f:X\to Y$ is said to be bounded by some function $t:\NN\to \NN$, if there is a realizer $F$ whose complexity is bounded by this function. A function is said to be computable within polynomial time, if its complexity can be bounded by a polynomial.
+
+Though this definition is well established, we add some remarks. First of: for functions $f:\RR\to \RR$, it might be natural to use oracle Turing-machines returning integer values and accepting integer valued oracles. Similar to the discussion \cref{sec: Complexity of reals} one can conclude that this will not alter the class of polynomial time computable functions.
+
+Still this definition is to be taken with a grain of salt: \temp{the following might not be the best choice of an example, maybe a better one involving the multiplication of reals can be found in Norbert Müllers Draft?} Consider a function $f:\RR\to\RR, ~ x\mapsto a$, for some number $a\in \RR$ computable linear time, but not in constant time (according to a fixed kind of Turing machine representing reals). We want to compare two algorithms computing this function. For this let $P$ be an an algorithm computing $a$ in linear time. Now consider for once the algorithm doing one step of $P$, then counting up to the total steps done in $P$ up to this point in time and returns what $P$ returns if $P$ finishes. On the other hand the algorithm which does one step of the algorithm $P$ and then queries the oracle with the number of steps done in $P$ and in the end returns the result of $P$. These algorithms are considered to have the same running time according to the definitions above. However, it should be clear that the former is clearly superior in practice, where the oracle will be some algorithm taking time to evaluate.
+
+To capture this difference we say that a function $f:X\to Y$ is computable within time $t:\NN\to \NN$ and with lookahead $s:\NN\to \NN$, if it is computable in time $t$ while, upon input of $n$, not querying the oracle on numbers larger than $s(n)$. In the example above, the first algorithm is computable within linear time and with constant lookahead, while the second is linear time with linear lookahead. Of course there are more elaborate examples, where one really has a tradeoff between the running time and the lookahead.
+
+As writing large numbers on the query tape will take steps of computation, any polynomial time computable function can also be computed with polynomial lookahead. This implies that polynomial time computable functions map polynomial time computable reals to polynomial time computable reals.
+
+\subsection{Complexity of operators}
+
+The refinement of the representation $\rhody^{2\omega}$ to the representation $\pi$ discussed in \cref{sec: Standard representations} does not only render the evaluation computable, but will also make a lot of other operations computable in polynomial time. A more elaborate presentation of this can be found in \cite{gevrey} (where also the term polytime is made explicit). In particular in Theorem 3.3 of \cite{gevrey} the following operations on $C^\omega_1$ are shown to be polytime computable with respect to the adjusted representation:
+\begin{enumerate}
+\item[\itshape{a)}] Evaluation as discussed above.
+\item[\itshape{b)},\itshape{c)}] Addition and multiplication.
+\item[\itshape{d),e)}] Differentiation and anti-differentiation.
+\item[\itshape{f)}] Parametric maximization. \temp{This needs to be explained a little closer.}
+\end{enumerate} The main effort is to work out bounds for the constants $k$ and $A$ of the new functions. This requires multiple technical Lemmata.

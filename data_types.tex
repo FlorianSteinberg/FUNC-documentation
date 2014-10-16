@@ -1,0 +1,66 @@
+\section{Data types}
+
+\subsection{\ir{REAL}s and \ir{sizetype}s}
+
+The data type \ir{REAL} is the heart of \irram. An overview over the main functionalities can be found in \cite{Muller2013}. We will take a closer look at the implementation. As already mentioned, real numbers will be represented by intervals of finite size in each iteration. To achieve the best possible results at low precision, \irram will work with pairs of the usual floating point type \code{double} in the first iteration. We will omit this part and concentrate on the parts that are used in the later iterations:
+\begin{description}
+\item[value:] A pointer to a MP object which will be interpreted as the centre of the interval.
+\item[error:] An object of the \irram internal type \ir{sizetype} that will be interpreted as the distance of the centre to each of the endpoints of the interval.
+\end{description}
+The standard operators \code +, \code *, \code - etc. are defined for Real numbers. They do interval arithmetic, which boils down to error propagation.
+
+\subsection{\ir{INTEGER}s}
+
+As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int},is that there is no restriction on the size of the Integer. The main drawbacks are size and speed. Thus it should only be used, when an unbounded size is really necessary.
+
+Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: The constants k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). It might be necessary and would be interesting to investigate the severity of this limitation. Also it is not clear to the author whether similar restrictions do already exist in other parts of \irram. If so it would be interesting to compare them.}
+
+\ref{}
+
+\temp{describe how INTEGER and REAL interact}
+
+\subsection{The class \ir{COMPLEX}}\label{sec: The class COMPLEX}
+
+The complex numbers play a very important role in the theory of the analytic functions. This importance will only be partially reflected in our implementation. The reason is that equality is not computable. This means that it can not be checked whether the imaginary part of a complex number vanishes. This entails the following two drawbacks when handling real valued analytic functions as a special case of analytic functions with complex coefficients:
+\begin{itemize}
+\item Since we can not detect whether a sequence is really real valued, all operations would have to be carried out with the complex series with vanishing imaginary part. This means we would spend a lot of time on unnecessary operations of adding and multiplying zeros.
+\item For similar reasons, we would have to output complex numbers upon real input. This can not easily be fixed, since there is no canonical way to convert a complex number to a real (compare \cref{}).
+\end{itemize}
+We will thus work with real coefficient series, and remark that these can be easily used to implement analytic functions with complex coefficients, since the real and imaginary part are analytic functions with real coefficients.
+
+Nonetheless we will want to allow evaluation of real analytic functions in complex arguments, thus we need a more or less complete type for complex numbers. \irram provides the class \ir{COMPLEX} for this purpose. As we do already have a type for real numbers, the implementation of this type is very simple and need not be further addressed here. However, the type lacks some basic capabilities we will need. For example, the operators \ir{<<} and \code{+=} are not overloaded and there are no constructors from types other than \ir{REAL}. We give a short description of the improvements we made:
+\begin{description}
+\item[constructors:] We added the following three constructor templates:
+\begin{lstlisting}
+template<class T>
+COMPLEX(const T& real_part);
+template<class T, class S>
+COMPLEX(const T& real_part, const S& imag_part);
+template<class T, class S>
+COMPLEX(std::pair<T,S> p);
+\end{lstlisting}
+The first takes an arbitrary type \code{T}, attempts to convert this type to a \ir{REAL}, and then constructs a \ir{COMPLEX} having the result as real part and imaginary part zero. The second does the same, but for both real and imaginary part. The third constructor will accept a \code{std::pair} instead of two parameters. This is in particular useful, since it enables the use of nested lists to construct vectors of complex numbers:
+\begin{lstlisting}
+vector<COMPLEX> v = {{1,2}, {pi(),4.5}};
+\end{lstlisting}
+\item[operators and functions:] The operators \code{+=} and \code{*=} where implemented in the obvious way. Furthermore the two functions
+\begin{lstlisting}
+COMPLEX power(const COMPLEX&, const COMPLEX&);
+COMPLEX power(const COMPLEX&, const int);
+\end{lstlisting}
+were added. The implementations are slightly adjusted copies of those of the real counterparts.
+\item[output:] The operator \ir{<<} was overloaded. We thereby followed the conventions:
+\begin{itemize}
+\item The precision is to be interpreted point wise. This means, both the real and the imaginary part are to be printed with the specified precision. This corresponds to the use of the supremum norm on $\CC = \RR^2$.
+\item Complex numbers are to be coated in parentheses. This is to avoid confusion. For example the attempt to output a linear monomial via a template as follows:
+\begin{lstlisting}
+template<class T>
+void out(const T& x) {
+	cout << x << " * X" << endl;
+}
+\end{lstlisting}
+would otherwise lead to ambiguous (or wrong) output.
+\item If the imaginary part of the number is smaller than the desired precision, only the real part is to be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same for small real part. Of course, if both real and imaginary part are small, the real part is to be printed.
+\end{itemize}
+The other standard output operators, in particular \ir{rwrite} were also overloaded.
+\end{description}

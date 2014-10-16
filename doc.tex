@@ -1,669 +1,120 @@
 \documentclass{article}
 
-\usepackage[utf8]{inputenc}
-%\usepackage[ngerman]{babel}
-\usepackage{xspace,listings,color}
-\usepackage[colorlinks=true]{hyperref}
-\usepackage[all]{xy}
-\usepackage{amsmath, amssymb, url}
-\usepackage{cleveref,cite, enumitem}
+% Packages:
+	\usepackage[utf8]{inputenc}
+	%\usepackage[ngerman]{babel}
+	\usepackage{xspace,listings,color}
+	\usepackage[colorlinks=true]{hyperref}
+	\usepackage[all]{xy}
+	\usepackage{amsmath, amssymb, url}
+	\usepackage{cleveref,cite, enumitem}
+	\usepackage{tikz}
 
-\bibliographystyle{amsalpha}
+% definitions:
+	% The following allows referencing descriptions:
+	\makeatletter
+	\def\namedlabel#1#2{\begingroup
+	    #2%
+	    \def\@currentlabel{#2}%
+	    \phantomsection\label{#1}\endgroup
+	}
+	\makeatother
 
-\definecolor{commentgray}{rgb}{0.4,0.4,0.4}
-\definecolor{gray}{rgb}{0.5,0.5,0.5}
-\definecolor{keywordred}{rgb}{0.7,0.1,0.1}
-\definecolor{stringyellow}{rgb}{0.7,0.5,0.82}
-\lstset{backgroundcolor=\color{white},
-	basicstyle=\footnotesize,     
-	breakatwhitespace=false,      
-	breaklines=true,              
-	captionpos=b,                 
-	commentstyle=\color{commentgray}, 
-	deletekeywords={...},         
-	escapeinside={\%*}{*)},       
-	keywordstyle=\color{keywordred},    
-	language=C++,              
-	morekeywords={*,...},         
-	numbers=left,                 
-	numbersep=5pt,                
-	numberstyle=\tiny\color{gray},
-	rulecolor=\color{black},      
-	showspaces=false,             
-	showstringspaces=false,       
-	showtabs=false,               
-	stringstyle=\color{stringyellow},
-	tabsize=2,
-	belowskip=.25cm}
+	\bibliographystyle{amsalpha}
 
-\DeclareMathOperator{\NN}{\ensuremath{\mathbb{N}}\xspace}
-\DeclareMathOperator{\RR}{\ensuremath{\mathbb{R}}\xspace}
-\DeclareMathOperator{\CC}{\ensuremath{\mathbb{C}}\xspace}
-\DeclareMathOperator{\can}{\ensuremath{\mathcal{C}}\xspace}
+	\definecolor{commentgray}{rgb}{0.4,0.4,0.4}
+	\definecolor{gray}{rgb}{0.5,0.5,0.5}
+	\definecolor{keywordred}{rgb}{0.7,0.1,0.1}
+	\definecolor{stringyellow}{rgb}{0.7,0.5,0.82}
+	\lstset{backgroundcolor=\color{white},
+		basicstyle=\footnotesize,     
+		breakatwhitespace=false,      
+		breaklines=true,              
+		captionpos=b,                 
+		commentstyle=\color{commentgray}, 
+		deletekeywords={...},         
+		escapeinside={\%*}{*)},       
+		keywordstyle=\color{keywordred},    
+		language=C++,              
+		morekeywords={*,...},         
+		numbers=left,                 
+		numbersep=5pt,                
+		numberstyle=\tiny\color{gray},
+		rulecolor=\color{black},      
+		showspaces=false,             
+		showstringspaces=false,       
+		showtabs=false,               
+		stringstyle=\color{stringyellow},
+		tabsize=2,
+		belowskip=.25cm}
 
-\newcommand{\irram}{\texttt{iRRAM}\xspace}
-\newcommand{\irrams}{\texttt{iRRAM}s\xspace}
-\newcommand{\cc}{\texttt{C++}\xspace}
-\newcommand{\ccOx}{\texttt{C++11}\xspace}
-\newcommand{\ir}[1]{\texttt{#1}}
-\newcommand{\code}[1]{\texttt{#1}}
-\newcommand{\func}[1]{\texttt{#1}}
-\newcommand{\NULL}{\texttt{NULL} pointer\xspace}
-\newcommand{\temp}[1]{\textcolor{red}{#1}}
-\title{A type for Taylor series for the \cc library \irram for exact real arithmetic}
-\date{last edited \today}
-\author{Florian Steinberg}
+	\DeclareMathOperator{\NN}{\ensuremath{\mathbb{N}}\xspace}
+	\DeclareMathOperator{\RR}{\ensuremath{\mathbb{R}}\xspace}
+	\DeclareMathOperator{\CC}{\ensuremath{\mathbb{C}}\xspace}
+	\DeclareMathOperator{\can}{\ensuremath{\mathcal{C}}\xspace}
+
+	\newcommand{\irram}{\texttt{iRRAM}\xspace}
+	\newcommand{\irrams}{\texttt{iRRAM}s\xspace}
+	\newcommand{\cc}{\texttt{C++}\xspace}
+	\newcommand{\ccOx}{\texttt{C++11}\xspace}
+	\newcommand{\ir}[1]{\texttt{#1}}
+	\newcommand{\seq}[1]{\mathbf{#1}}
+	\newcommand{\lb}{\mathrm{lb}}
+	\newcommand{\code}[1]{\texttt{#1}}
+	\newcommand{\func}[1]{\texttt{#1}}
+	\newcommand{\rhody}{\rho_{\mathrm{dy}}}
+	\newcommand{\Mdy}{M_{\mathrm{dy}}}
+	\newcommand{\bigo}{\mathrm O}
+	\newcommand{\NULL}{\texttt{NULL} pointer\xspace}
+	\newcommand{\temp}[1]{\textcolor{red}{#1}}
+	\newcommand{\pspace}{\ensuremath{\mathrm{PSPACE}}\xspace}
+	\title{A type for Taylor series for the \cc library \irram for exact real arithmetic}
+	\date{last edited \today}
+	\author{Florian Steinberg}
 
 \begin{document}
 \maketitle
 \newpage
 \tableofcontents
 \newpage
-\section*{\center{An introduction which can be skipped without guilty conscience}}
-
-This text is meant to be a documentation of an expansion of the \cc library \irram for exact real arithmetic by a type for real analytic functions. The guideline for explicitness is as follows: A person who is familiar with the the basic notions of real computability theory, and a moderately experienced \cc programmer, should be able, when handed this document and its references, to reproduce (and in particular understand) all the additions done to \irram within a few days. This means we will not describe the added code line by line, but address the main obstacles that arose and explain how they were overcome.
-
-\temp{For the time being, \irram is still in development. Thus some details may, and some hopefully will change. We will try to mark all parts of the text which seem likely to become irrelevant or incorrect in the future red. More general we colour all parts, that are temporary. Ideally these sections should vanish sometime.}
-
-The paper is divided into \temp{a number of} parts. The first part serves to lay down the aspects of computability theory which are essential to the program but are not expected to be known by the reader. In the second part the we will describe some parts of \irram which can not be found in any of the documentations, but are essentially to what we want to do. The third part presents some parts of the \ccOx standard template library needed and then changes over to describes the key features and functionalities of the implementation. In the last chapter we will address some shortcomings and possible future improvements.
-
-As we describe an implementation, we choose a very informal style of writing. No definitions, lemmatas and theorems even in the mathematical parts. Instead aim to make the text accessible by use of short chapters with descriptive names and many cross-references. \temp{Maybe we might add an index, lateron.}
+\include{introduction}
 
 \part{Higher type computability theory}
 
-We assume the reader is familiar with the concepts of computability of real numbers and functions thereon (at least functions on compact intervals). For look-up we suggest \cite{MR1005942} or the freely available \cite{MR2762094} and the references given there. Here the former adopts a somewhat analytical point of view, while the later stays closer to the notions of computability theory. Another good source is probably \cite{MR1795407} \temp{(which the author is not familiar with)}. As the main source for things to implement, we feel like the paper \cite{gevrey} should be mentioned in the introduction of this chapter. Tough it will be referenced at the multiple places where it is used.
+	We assume the reader is familiar with the concepts of computability of real numbers and functions thereon (at least functions on compact intervals).
+	For look-up we suggest \cite{MR1005942}, or the freely available \cite{MR2762094} and the references given there.
+	Here the former adopts a somewhat analytical point of view, while the later stays closer to the notions of computability theory.
+	Another good source is probably \cite{MR1795407}.
+	As the main source for things to implement, we feel like the paper \cite{gevrey} should be mentioned in the introduction of this chapter.
+	Tough it will be referenced at the multiple places where it is used.
 
-\section{Computable analytic functions}
+	In the later sections (which might be of lower importance for the implementations) we will discuss complexity theory of functions and operators.
+	These topics are not thoroughly discussed in any of the above citations and we point the reader to \cite{}.
 
-Let $B(x,r)$ denote the open disk of radius $r\in\RR^+$ around some $x\in \CC$ and $\overline{B(x,r)}$ its closure. The space of functions we are interested in is $C^\omega(\overline{B(0,1)})$, that is the functions analytic on a open superset of the closed unit disc. We will abbreviate this space as $C^\omega_1$. For the rest of this section we fix a function $f\in C^\omega_1$.
-
-Since $f$ is analytic of an open superset of the unit disc, there is uniquely determined by the series of its Taylor coefficients in zero, which has a radius of convergence strictly larger than $1$. In the following, we will denote the series of Talyor coefficients of $f$ in zero by $(a_n)_{n\in \NN}$. It can be expressed in terms of the values of $f$s derivatives in zero, or by Cauchy's differentiation formula:
-\[ a_n = \frac{f^{(n)}(0)}{n!} = \frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda. \]
-It is well known, that this series is again computable, if the analytic function $f$ is (see for example \cite[Chapter 1.2, Proposition 1]{MR1005942}). Also the inverse is true: Given some series $\overline b = (b_n)_{n\in \NN}$ whose radius of convergence $R$ is strictly larger than $1$, one can easily construct an algorithm computing the function
-\[ f_{\overline b}: B(0,R) \to \CC, ~ x\mapsto \sum_{n\in \NN} b_n x^n. \]
-Thus the function $f$ is computable if and only if its series of Taylor coefficients in zero is.
-
-The above can be interpreted as statement about an operator from a suitable space of functions to a space of sequences and its inverse. We asserted, that those operators preserve computability point wise. Unfortunately this does not imply their computability: If the series $(b_n)_{n\in \NN}$ is considered as input instead of being fixed, an algorithm computing the evaluation fails to exist. To construct the algorithms for a fixed series, we had to resort to information about it that can not be extracted from it in a computable way.
-
-This is a very unpleasant fact: We want to represent analytic functions by their power series, since many manipulations can then be carried out efficiently (consider for example differentiation). But by the above we will not be able to provide an algorithm that evaluates an arbitrary function! Fortunately, this problem can be solved by manually enriching each function (or series) by a manageable set of additional Information. A more detailed presentation of this can be found in \cite{Mue95}, where also a set of sufficient information is specified.
-
-We now proceed to discuss an adequate format for this additional information in our setting (which was already suggested in \cite{gevrey}).
-
-
-\subsection[The constants k and A]{The constants $k$ and $A$}\label{sec: The constants k and A}
-
-Consider a sequence $\overline a = (a_n)_{n\in \NN}$, such that the radius of convergence $R$ of the sequence is strictly larger than $1$ and let $f_{\overline a}$ denote the function
-\[ f_{\overline a}: B(0,R) \to \CC,~ x \mapsto \sum_{n\in \NN} a_n x^n. \]
-We will always be able to find two positive integer constants $k$ and $A$ with the following properties:
-\begin{itemize}
-\item $r:=\sqrt[k]{2}$ is strictly smaller than the radius of convergence $R$ of $(a_n)_{n\in \NN}$
-\item $|a_n|  r^n \leq A$ for all $n\in \NN$.
-\end{itemize}
-We briefly discuss how these constants can be found: Since the radius of convergence of $(a_n)_{n\in \NN}$ is assumed to be strictly larger than $1$, and $r_k:=\sqrt[k] 2$ goes to $1$ as $k$ goes to infinity, it is possible to choose $k$ big enough for $r_k$ to be in between $1$ and the radius of convergence. Now fix such an $k$ and abbreviate $r_k$ as $r$. Consider the function
-\[ f_{\overline a}|_{\{z:|z| = r\}}. \]
-Since this is a continuous function on a compact domain, it will be bounded. Let $A$ be a bound of this function. The Cauchy differentiation formula assures, that
-\[ |a_n |=  \left|\frac 1 {2\pi i}\int_{|z| = r} \frac{f(z)}{|z|^{n+1}} d\lambda\right| \leq \frac A {r^n}, \]
-thus $A$ is as desired.
-
-The constants $k$ and $A$ enable us to obtain a tail estimate:
-\[ \left|\sum_{n \geq N} a_n z^n\right| \leq A \frac{(|z|/r)^N}{1- |z|/r}. \]
-Since $r$ is strictly larger than $1$, the right hand side will tend to zero, if $|z|$ is smaller than one. This allows us to evaluate the function $f_{\overline a}$ on $\overline{B(0,1)}$: Given a complex number $z$, and a precision $p$, we first find a $N$ large enough, that $\frac A{r^N-r^{N-1}}$ is smaller than half the error. Then we evaluate the Polynomial $\sum_{n = 0}^N a_n x^n$ with precision greater than half the error.
-
-\subsection[Enriching the representation]{Enriching the representation $\rho_{\mathrm{dy}}^{2\omega}$}
-
-We start by recalling some basic facts about representations: A representation $\rho$ of a set $X$ is a partial surjective mapping from the cantor space $\can = \{0,1\}^\omega$ to $X$. Elements of $\rho^{-1}(x)$ are called \emph{names} of $x$. The standard representation $\rho_{\mathrm{dy}}$ of $\RR$ is given defined as follows: $\rho_{\mathrm{dy}}(w) = x$ if and only if $w$ encodes a sequence $z_n$ of integers, such that $\left|x - \frac{z_n}{2^{n+1}}\right| \leq 2^n$. Given representations $\rho_i$ of sets $X_i$ ($i\in \NN$) it is possible to construct a representation $\prod_{i\in \NN} \rho_i$ of $\prod_{i\in \NN} X_i$ (using some computable, bijective function $\NN\times\NN\to\NN$), and also a representation $\rho_1 \times \rho_2$ of $X_1 \times X_2$. The standard representation of $\CC \cong \RR^2$ is $\rho^2_{\mathrm{dy}} = \rho_{\mathrm{dy}} \times \rho_{\mathrm{dy}}$.
-
-If $\rho$ is a representation of a set $X$, an element $x$ of $X$ is called $\rho$-\emph{computable}, if there is a name $w$ of $x$ and a Turing-machine that returns upon input of an integer $n$ the $n$-th entry of $w$. For the standard representations of $\RR$ and $\CC$ this leads to the standard notions of computability. There is a notion of computability of functions on cantor space, and it can be transferred to arbitrary represented sets: If $\nu$ is another representation of some other set $Y$, a function $f:X\to Y$ is called $\rho\to\nu$-computable, if there is a computable realizer, that is a function $F:\can\to\can$ such that the following diagram is commutative:
-\[ \begin{xy}
-\xymatrix{X\ar[r]^f & Y \\ \can \ar[r]_F\ar[u]^\rho & \can \ar[u]_\nu}
-\end{xy}. \]
-
-We get a representation $\rho^{2\omega}_{\mathrm{dy}}$ of our space $C^\omega_1$, naming $f$ the same as the sequence $(a_n)_{n\in \NN} \in \CC^\omega = \prod_{i\in \NN}\CC$. Now we can reword the comments from the beginning of the section as follows: The function
-\[ \mathrm{ev}: C^\omega_1\times \CC \to \CC, ~ (f,x) \mapsto f(x) \]
-is not $\rho^{2\omega}_{\mathrm{dy}}\times \rho^2_{\mathrm{dy}}\to\rho^2_{\mathrm{dy}}$-computable, but we can fix this by considering a slightly adjusted representation $\pi$, that will precede a $\rho^{2\omega}_{\mathrm{dy}}$ name of a function $f$ by two integers $k$ and $A$ as described in the subsection above (we skipped some technical details here. For example $k$ should be encoded in unary and $A$ in binary). \temp{Do we really need the content of this subsection up to now?}
-
-This adaptation does not only render the evaluation computable, but will also make a lot of other operations polytime computable. A more elaborate presentation of this can be found in \cite{gevrey} (where also the term polytime is made explicit). In particular in Theorem 3.3 of \cite{gevrey} the following operations on analytic functions are shown to be polytime computable with respect to the adjusted representation:
-\begin{enumerate}
-\item[\itshape{a)}] Evaluation as discussed above.
-\item[\itshape{b)},\itshape{c)}] Addition and multiplication.
-\item[\itshape{d),e)}] Differentiation and anti-differentiation.
-\item[\itshape{f)}] Parametric maximization. \temp{This needs to be explained a little closer.}
-\end{enumerate}
-The main effort is to work out bounds for the constants $k$ and $A$ of the new functions. This requires multiple technical Lemmata.
-
-\subsection{Choices}
-
-It is obvious, that the constants $k$ and $A$ are not uniquely determined: They can always be increased and will still do. But if we fix either one of them, there is a smallest possible value for the other. In many cases, multiple choices of the Parameters are available: Consider for example polynomials with coefficients from $[0,1]$: Since these are whole functions, we can always choose $k=1$. But if we do so, $A$ will have to majorize the polynomial on the set $\{z\mid |z| =2\}$, thus $A$ will in general be of the order of $2^n$, where $n$ is the degree of the polynomial. On the other hand, if we choose $k$ to be the degree of the polynomial, then $A$ too will be of the order of the degree.
-
-We can not give a decision procedure, but there is a guideline: We mentioned that in the new representation $k$ is encoded in unary, while $A$ is encoded in binary. This implicates, that all operations are shown to be computable in time polynomial in the output precision plus $k + \log(A)$. Thus it is a good idea to optimize the asymptotical behaviour of this parameter. However, this does not decide which of the to two options given in the preceding example is to prefer: In both cases the parameter $k+\log(A)$ grows linearly with the degree of the Polynomial.
-
-
-\subsection{A Lipschitz bound}
-
-Of course the zero-th tail estimate can be interpreted as a bound of $\|f\|_\infty$. Since any bound on the maximum norm of the derivative of a function is a Lipschitz constant of said function, this allows us to easily extract a Lipschitz constant: From the proof of Theorem 3.3 in \cite{gevrey} can be seen, that the constants $k'$ and $A'$ for the derivative $f'$ can be chosen as:
-\[ k' := 2 k \]
-and
-\[ A' := \left\lceil \frac{A}{r} \left(1+ \frac{2k}{e \ln(2)}\right)\right\rceil. \]
-Together with the tail estimate, we conclude, that
-\[ L := \left\lceil A \frac{\left(1 + \frac{2k}{e\ln(2)}\right)}{r-\sqrt{r}}\right\rceil \]
-is a Lipschitz constant. Although the ceiling function is not computable, we can calculate a number which will either equal $L$ or $L+1$ with very little computational effort.
+	\include{analytic}
+	\include{realcomp}
+	\include{htct}
 
 \part{\irram}
 
-In this part, we are going to describe some key features of the \cc library \irram for exact real arithmetic. We do not claim our depiction to be complete or self-contained. Instead we restrict ourselves to those parts of \irram that are of importance for us, and can neither be found in the official \irram documentation \cite{Muller2009}, nor in the incomplete html-documentation \cite{Muller2001-2003} or \temp{the draft} \cite{Muller2013} \temp{(yet?)}.
+	In this part, we are going to describe some key features of the \cc library \irram for exact real arithmetic.
+	We do not claim our depiction to be complete or self-contained.
+	Instead we restrict ourselves to those parts of \irram that are of importance for us, and can neither be found in the official \irram documentation \cite{Muller2009}, nor in the incomplete html-documentation \cite{Muller2001-2003} or \temp{the draft} \cite{Muller2013} \temp{(yet?)}.
 
-\section{Basic functionalities}
-
-\subsection{The general idea}
-
-At first glance the most reasonable approach to computable analysis would be to represent a real number $x$ by an algorithm $P$ taking a natural number $n$ and returning an approximation, i.e. an appropriately encoded rational number $x_n$ such that $|x-x_n|<2^{-n}$. This kind of proceeding bears the following problems:
-\begin{itemize}
-\item Each time a sum or a product of real numbers is calculated, the algorithms of the corresponding real numbers must be copied or at least referenced. This leads to a tree-like structure of any program and often to uncontrollable growth of memory consumption.
-\item A algorithm $P$ encoding a real number carries more information than the real number itself. If $P$ is given to a function, this function can for example also use the running time of $P$ to generate its output. This kind of functions should from a mathematical point of view not be considered computable, and can lead to pathological behavior.
-\end{itemize}
-
-Thus the \irram chooses a different approach. Namely the real numbers are represented by finite intervals containing said real number. All manipulations are carried out with these intervals. If a situation occurs, where the precision is simply not sufficient anymore, the whole calculation is restarted with higher precision. This procedure is called a \emph{reiteration}. The single runs of the program with different precisions will be referred to as \emph{iterations}.
-
-At first glance, this approach seems to be very time consuming: The whole computation might be restarted repeatedly, discarding all the computations made in the earlier iterations completely. But it is well known, that this does not blow up the asymptotic complexity: More precisely, the asymptotic complexity of the whole computation and the last reiteration coincide \cite{}.
-
-\irrams approach does not suffer the problems listed above, but brings its own (which are hopefully more manageable):
-\begin{itemize}
-\item If the program includes in and output, a restart of the program will lead to doubled output. This is mainly a implementation problem and can be avoided by using the output methods provided by \irram.
-\item If on the other hand, the program asked the user for input at some point, this input will have to be memorized. Moreover: if any multivalued function is computed, it has to evaluate to the exact same value in the next run and has to be memorized. This is to avoid incoherences in output.
-\item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is re-evaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
-\end{itemize}
-
-The problem described in the last bullet can partially be eliminated by dividing the tasks into two sub-programs. However, as mentioned above, this does not effect the asymptotic running time, and we thus will not go into it in more detail. Instead we will go into the problem discussed in the first bullet in more detail in the oncoming section. \temp{Note, that the content of the remaining bullet is very closely related. It may or may not be addressed on its own.}
-
-Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programming language. This means, that it is often possible for the user to do things he is not really supposed to do.
-
-\subsection{Output}
-
-We did already mention, that output can be a problem and that one should use the output methods provided. \irram offers the following functions for output:
-\begin{itemize}
-\item The functions \irram::\ir{rwrite}, \irram::\ir{rwritee}.
-\item The function \irram::\ir{rfprint}.
-\item The function \irram::\ir{rshow}.
-\item Any \irram::\ir{orstream} via the overloaded \ir{<<} operators. In particular the standard one \irram::\ir{cout}.
-\end{itemize}
-A description of how the output functions are to be used can be found in \cite[\temp{Chapter 34.8.}]{Muller2013}.
-
-We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s. If you could output pointer addresses, these would change in reiterations. Since output once written will not be revised, these might be wrong in later iterations. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: if you output the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result can be confusing for the user.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.
-
-The remaining output functions simply call the function \ir{swrite} with the desired precision and then hand the string to \irrams standard \ir{orstream} \ir{cout}. Thereby bypassing \ir{cout}s standard output precision.
-
-
-\section{Data types}
-
-\subsection{The class \ir{REAL}}
-
-The data type \ir{REAL} is the heart of \irram. The class models real numbers via Intervals. A overview over the main functionalities can be found in \cite{Muller2013}. We will take a closer look at the implementation. The most important members of the class \ir{REAL} are:
-\begin{description}
-\item[bla:] A pointer to an MP object.
-\item[blabla:]
-\end{description}
-
-\subsection{The class \ir{INTEGER}}
-
-As the name might indicate, the class \ir{INTEGER} is a class to model integers. The main advantage over the \cc type \code{int},is that there is no restriction on the size of the Integer. The main drawbacks are size and speed. Thus it should only be used, when an unbounded size is really necessary.
-
-Two examples: We will use the data type \ir{INTEGER} for the constants $k$ and $A$ described in \cref{sec: The constants k and A}, since a reasonable small number of iterated differentiations can lead to a growth of these constants which would lead to an overflow of \code{int}s (or \code{unsigned int}s for that matter). On the other hand, we will model series as maps that map \code{unsigend int}s to \code{REAL}s, since it seems to be very unlikely that we will ever need to access a element of the sequence beyond the 4.294.967.295-th. Especially since we are mostly dealing with effectively convergent series. \temp{This does contradict the purpose of \irram as library for \emph{exact} real Arithmetic, as it leads to the existence of a best possible approximation and the possibility of an overflow (independent of the available memory). It might be necessary and would be interesting to investigate the severity of this limitation. Also it is not clear to the author whether similar restrictions do already exist in other parts of \irram. If so it would be interesting to compare them.}
-
-\ref{}
-
-\temp{describe how INTEGER and REAL interact}
-
-\subsection{The class \ir{COMPLEX}}\label{sec: The class COMPLEX}
-
-The complex numbers play a very important role in the theory of the analytic functions. This importance will only be partially reflected in our implementation. The reason is that equality is not computable. This means that it can not be checked whether the imaginary part of a complex number vanishes. This entails the following two drawbacks when handling real valued analytic functions as a special case of analytic functions with complex coefficients:
-\begin{itemize}
-\item Since we can not detect whether a sequence is really real valued, all operations would have to be carried out with the complex series with vanishing imaginary part. This means we would spend a lot of time on unnecessary operations of adding and multiplying zeros.
-\item For similar reasons, we would have to output complex numbers upon real input. This can not easily be fixed, since there is no canonical way to convert a complex number to a real (compare \cref{}).
-\end{itemize}
-We will thus work with real coefficient series, and remark that these can be easily used to implement analytic functions with complex coefficients, since the real and imaginary part are analytic functions with real coefficients.
-
-Nonetheless we will want to allow evaluation of real analytic functions in complex arguments, thus we need a more or less complete type for complex numbers. \irram provides the class \ir{COMPLEX} for this purpose. As we do already have a type for real numbers, the implementation of this type is very simple and need not be further addressed here. However, the type lacks some basic capabilities we will need. For example, the operators \ir{<<} and \code{+=} are not overloaded and there are no constructors from types other than \ir{REAL}. We give a short description of the improvements we made:
-\begin{description}
-\item[constructors:] We added the following three constructor templates:
-\begin{lstlisting}
-template<class T>
-COMPLEX(const T& real_part);
-template<class T, class S>
-COMPLEX(const T& real_part, const S& imag_part);
-template<class T, class S>
-COMPLEX(std::pair<T,S> p);
-\end{lstlisting}
-The first takes an arbitrary type \code{T}, attempts to convert this type to a \ir{REAL}, and then constructs a \ir{COMPLEX} having the result as real part and imaginary part zero. The second does the same, but for both real and imaginary part. The third constructor will accept a \code{std::pair} instead of two parameters. This is in particular useful, since it enables the use of nested lists to construct vectors of complex numbers:
-\begin{lstlisting}
-vector<COMPLEX> v = {{1,2}, {pi(),4.5}};
-\end{lstlisting}
-\item[operators and functions:] The operators \code{+=} and \code{*=} where implemented in the obvious way. Furthermore the two functions
-\begin{lstlisting}
-COMPLEX power(const COMPLEX&, const COMPLEX&);
-COMPLEX power(const COMPLEX&, const int);
-\end{lstlisting}
-were added. The implementations are slightly adjusted copies of those of the real counterparts.
-\item[output:] The operator \ir{<<} was overloaded. We thereby followed the conventions:
-\begin{itemize}
-\item The precision is to be interpreted point wise. This means, both the real and the imaginary part are to be printed with the specified precision. This corresponds to the use of the supremum norm on $\CC = \RR^2$.
-\item Complex numbers are to be coated in parentheses. This is to avoid confusion. For example the attempt to output a linear monomial via a template as follows:
-\begin{lstlisting}
-template<class T>
-void out(const T& x) {
-	cout << x << " * X" << endl;
-}
-\end{lstlisting}
-would otherwise lead to ambiguous (or wrong) output.
-\item If the imaginary part of the number is smaller than the desired precision, only the real part is to be printed (i.e. \code{+1.00E+0001} instead of (\code{+1.00E+0001+ 0 \ \ \ \ \  i})). The same for small real part. Of course, if both real and imaginary part are small, the real part is to be printed.
-\end{itemize}
-The other standard output operators, in particular \ir{rwrite} were also overloaded.
-\end{description}
-
-\section{\irram functions}
-
-\subsection{Limits}
-
-\subsection{\irram::\ir{FUNCTION}s}
-
-We aim to implement a type for analytic functions in \irram, which is not yet present. But there already is a type of functions implemented. We will give a short review of this type.
+	\include{basics}
+	\include{data_types}
+	\include{functions}
 
 \part{Implementation}
 
-\temp{It should be clear, that the right place for our implementations would be the file iRRAM\_functional.h (and maybe a corresponding .cc file). As \irram does not yet use \ccOx, which our implementations will rely on heavily, we temporarily locate it as separate file called FUNC.cc in the folder \lq user\_programs\rq\ (or in more current, not yet released versions which miss this folder, in the folder \lq examples\rq).}
-
-\section{Tools provided by the \ccOx standard template library}
-
-In this section we will introduce those tools the \ccOx standard template library provides, which we will use extensively. The information presented was gathered from various web pages. Some of the most frequented sites were \cite{cppreference} and \cite{cplusplus}, many of the discussions on the site \cite{stackoverflow} were very helpful. Last but not least, Carsten Rösnick was of great help by hinting at what to look for.
-
-\cc provides four kinds of functional objects: functions, member functions, function pointer and member function pointer. Since the first two are very common, we assume the reader is familiar with them. However, it is important to note that a function pointer can only point at functions that where created outside of the main program. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions.
-
-Member function pointer do actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. But using member functions to achieve the flexibility we desire would be very involved, luckily for us \ccOx added improved syntax for exactly this. In the following sections review these tools.
-
-\subsection{\code{std::function}s}\label{sec: std::functions}
-
-The std::function template is a general-purpose polymorphic function wrapper (according to \cite{cppreference}). We will find \code{std::function}s to be highly useful. But it will be not until we learn about the \cc lambda calculus, that we can grasp their whole potential. Thus the description in this chapter might appear somewhat unspectacular. A \code{std::function} can be defined by
-\begin{lstlisting}
-std::function<RESULT(PARAM)> f;
-\end{lstlisting}
-
-A std::function can be evaluated like a function, and defined from a function pointer, as the following short example shows:
-\begin{lstlisting}
-#include <iostream>
-#include <functional>
-
-using std::function;
-
-double f(int i) {
-	return double(i);
-}
-
-int main()
-{
-	function<double(int)> g = f;
-	std::cout << g(4) << std::endl;
-	return 0;
-}
-\end{lstlisting}
-
-The \code{std::function} can do a lot more than regular functions though. For example: If \code{f} is a \code{std::function<RESULT(PARAM1, PARAM2)>} of two arguments, we can define a \code{std::function<RESULT(PARAM2)>} \code{g} by setting the first parameter to a fixed value (say \code x) using the function \code{std::bind}:
-\begin{lstlisting}
-function<RESULT(PARAM2)> g = bind(f, x, std::placeholders::_1);
-\end{lstlisting}
-To achieve something similar with regular function pointers is complicated (though it is possible). We will see that some of those possibilities hold risks, since \irram might not expect to encounter a function, containing real numbers that are not handed to it as an parameter.
-
-The syntax \code{function<RESULT(PARAM)>} of \code{std::function}s seems nicer than the \ir{FUNCTION<PARAM, RESULT>} we have seen before. It is also more convenient, since confusing parameter and result type gets a lot harder. The former syntax is implemented by a template specialisation. The definition of looks like this:
-\begin{lstlisting}
-template<class T>
-class function {};
-
-template<class T, class S>
-class function<T(S)> {/*...*/};
-\end{lstlisting}
-Here the first two lines define an empty template class, then lines four and five specialize the definition in the case, that the template argument is of a specific form. Namely a string of the form T(S), where T and S are some arbitrary types. We will use this trick to also improve the syntax of our function type.
-
-\code{std::function}s are in many respects superior to \cc functions, but they lack one thing functions do have: the possibility to be made templates.
-
-
-\subsection{The \cc lambda calculus}\label{sec: The C++ lambda calculus}
-
-One of the main sources for \code{std::functions} is the \cc lambda calculus. A lambda expression in \cc is of the form
-\begin{lstlisting}
-[/*captures*/](/*parameters*/) -> /*output_type*/ {/*algorithm*/};
-\end{lstlisting}
-Where the commented parts are to be replaced as follows:
-\begin{description}
-\item[\textcolor{commentgray}{\code{/*captures*/}}] is to be replaced by a list of variables of local scope, that are needed by the algorithm but supposed to appear as parameters of the function (those are actually what mathematicians mean, when they say \lq parameters\rq). A variable occurring in this list will be called captured (by the lambda function). Global variables need not be captured and can be accessed from the algorithm anyway. Variables may be captured by copy or, if they are preceded by an \lq\code{\&}\rq, by reference.
-\item[\textcolor{commentgray}{\code{/*parameters*/}}] is to be replaced by the list of parameters of the function to be constructed.
-\item[\textcolor{commentgray}{\code{/*output\_type*/}}] is to be replaced by the output type of the function to be constructed (if the value that follows the return command is not of this type, a implicit type conversion will be attempted). This part (together with the \lq\code{->}\rq) can be omitted if the output type will be clear from the context.
-\item[\textcolor{commentgray}{\code{/*algorithm*/}}] is to be replaced by the algorithm calculating the return value from the parameters and the captured variables.
-\end{description}
-an easy example of a definition of a \code{std::function} via the \cc lambda calculus could look like this:
-\begin{lstlisting}
-int i = 5;
-std::function f<double(int)> = [i](const int& n) {i*log(n);};
-\end{lstlisting}
-Here the output type was omitted, since it is specified in the \code{std::function}.
-
-We remark, that members can not be captured directly: if \code c is an object of an class \code C, which has a member k of type T, then
-\begin{lstlisting}
-[c.k]() -> T {return c.k;};
-\end{lstlisting}
-will not work. The reason is the following: Assume the class C has some member function f changing the value of k. In this case
-\begin{lstlisting}
-[&c, c.k]() -> T {c.f(); return c.k;};
-\end{lstlisting}
-would be ambiguous, since c.k could mean both the field of the object c captured by reference, which has the new value, or the member c.k, which was captured by copy before the change was made and therefore should have the old value.
-
-Thus we will have to first copy the member to a local variable, then capture it.
-
-\subsection{\code{std::shared\_ptr}s}
-
-A shared pointer is an object consisting of an pointer (to an object of specified type) and a pointer to an reference counter. Each time the shared pointer is copied the reference counter will be increased. If a shared pointer is destroyed, it decreases the reference counter and checks if it is zero, and if it is, it destroys the object it is pointing to.
-
-Shared pointers are very useful for treelike ownership relations: If one object is used by multiple other objects, each of the latter can, instead of an pointer or a copy, to the former hold a shared pointer. This way it is guaranteed, that we neither have useless copies, nor memory leaks because no one feels responsible for destroying.
-
-The \code{std::shared\_ptr} can be dereferenced by a preceding $*$, just as a regular pointer, can be constructed from regular pointers and compared to the \NULL. Here is an short example:
-
-\begin{lstlisting}
-double* ptr = new double(4.5);
-std::shared_ptr<double> s_ptr(ptr);
-cout << *s_ptr << endl;
-\end{lstlisting}
-returns \lq 4.5\rq.
-
-There are two main sources of errors when handling shared pointers:
-\begin{itemize}
-\item Multiple shared pointers are constructed from the same pointer: In this case each shared pointer keeps its own reference counter. If the first of those counters hits zero, the object will be destroyed. If now a shared pointer following an other reference counter tries to access the object, there will be an error.
-\item Circular ownership relations: for simplicity lets have a look at the case of two lonely shared pointers pointing at each other. Each of the pointers has a reference counter which is one (since they are lonely). now assume we destroy one of them. This will decrease the corresponding reference counter and, since the reference count will hit zero, destroy the other shared pointer. This in turn will decrease its reference counter, which will also hit zero. Therefore it will attempt to destroy the first shared pointer. Which will lead to an error, since it has already been deleted.
-\end{itemize}
-
-\section{Some classes of functions and similar objects}
-
-Before we talk about the class of Taylor series we are aiming to implement, we will introduce two more general classes (and one more restrictive). These classes are convenient for us, since a lot of code, which would otherwise make the class of Taylor series huge, can be \lq exported\rq. This improves code readability. Of course we also hope that these classes might proof useful on their own.
-
-Before we take a closer look at the individual classes, we give a short overview:
-\begin{description}
-\item[\func{POLY<coeff\_type>}] will be a minimalistic class for polynomials with coefficients of type \code{coeff\_type}.
-\item[\func{FUNC<RESULT(PARAM)>}] will be a new class for functions. Its functionalities will be very similar to those of \ir{FUCNTION<PARAM, RESULT>}, but the implementation will be somewhat different: It will heavily be relying on the tools provided by the \ccOx standard template library.
-\item[\func{POWERSERIES<coeff\_type>}] will implement formal power series. This is, functions from the integers to objects of type \code{coeff\_type} but with the convolution replacing the point wise product and the function \code{get\_coeff} to avoid the operator \code{()}, which in this case might be ambiguous, since it could mean both the evaluation as function from the integers to \code{coeff\_type} or analytic function. Also a formal derivative and anti derivative will be implemented.
-\end{description}
-
-There will be one additional helper class \func{coeff\_fetcher<coeff\_type>}, to improve the speed at which the coefficients of \func{POWERSERIES} can be evaluated.
-
-To keep the class definitions presented in the following subsections readable, they might differ slightly from those, that can be found in the code. \temp{Some of the details left out will be addressed in later sections.}
-
-\subsection{The class \func{POLY}}
-
-This class is supposed to model polynomials with coefficients from some class \code{coeff\_type}. Its main component is a shared pointer named \code{coeff}, which points to a constant \code{std::vector<coeff\_type>}. The vector is a constant, so will not have to copy it if we copy the polynomial. We will just copy the shared pointer. If we need to change the coefficients, we will create a new vector and reassign the shared pointer. If the polynomial was the only one referencing the former vector, this vector will be automatically deleted. The class definition of \code{POLY} looks similar to this:
-
-\begin{lstlisting}
-template<class coeff_type>
-class POLY {
-	// members:
-		private:
-			shared_ptr<const vector<coeff_type>> coeff;
-	// constructors:
-		public:
-			POLY();
-			template<class T>
-			POLY(const T&);
-			POLY(vector<coeff_type>);
-	// standard operators:
-		public:
-			POLY& operator = (const POLY<coeff_type>&);
-			friend POLY operator - (const POLY<coeff_type>&);
-			/* ... */
-			POLY& operator *= (const POLY<coeff_type>&);
-	// member functions:
-		public:
-			coeff_type get_coeff(const unsigned int n) const;
-			unsigned int get_degree() const;
-			template<class ARG>
-			ARG operator () (const ARG&);
-};
-\end{lstlisting}
-
-We briefly discuss the general purpose of the components of this class, before we address some of the key implementations.
-\begin{description}
-\item[\code{members}:] The one existent member has already been discussed above.
-\item[\code{constructors}:] In line 8 the empty constructor can be found, it will construct the zero polynomial. Then there is a constructor template in line 9 and 10, which will attempt to convert any given type \code{T} to \code{coeff\_type} and then construct the polynomial having this value as first and only non-zero coefficient. Finally in line 11 we find a constructor, that constructs a polynomial from a given list of coefficients. We refrain from handing the vector over as a reference to allow syntax such as \code{POLY<REAL> P(\{1,2,pi()\})}, where \code{\{1,2,pi()\}} as a temporary object can not be referenced.
-\item[\code{standard operators}:] There is no complete list of the operators above, so we give one here: The operators \code{=} (copy constructor), \code{-} (additive inverse), \code{+}, \code{-} (substraction), \code{*}, \code{+=} and \code{*=} are overloaded for polynomials.
-\item[\code{member functions}:] The function \code{get\_degree()} will return the length of the coefficient vector. The highest coefficient might be zero, so we do not really get the degree, but a upper bound for it. Since we can not check whether a coefficient is zero in general, this is not avoidable. \code{get\_coeff(n)} will return the \code{n}-th coefficient, if \code{n} is bigger than the coefficient vector is long, it will return zero. Another option would be to issue a warning or even an error, but the chosen approach simplifies the implementations of the standard operators. line 22 and 23 are taken by an evaluation operator. Since polynomials are often evaluated in types more general than \code{coeff\_type} (for example Polynomials with integer coefficients are regularly taken as functions on the real or complex numbers) this operator is a template. Of course the argument \code{ARG} needs to provide an addition and multiplication. Additionally \code{ARG} needs to have an multiplication with \code{coeff\_type} from the right (this is in particular the case if \code{ARG} is constructible from \code{coeff\_type}).
-\end{description}
-
-The implementation of the constructors are straight forward. So are most of the implementations of the standard operators. As example we take a closer look at the addition:
-\begin{lstlisting}
-POLY operator + (const POLY<coeff_type>& P) {
-	unsigned int max_degree = max(get_degree(), P.get_degree());
-	vector<coeff_type> new_coeff(max_degree + 1);
-	for (unsigned int i = 0; i <= max_degree; i++) {
-		new_coeff[i] = get_coeff(i) + P.get_coeff(i);
+	\temp{
+		It should be clear, that the right place for our implementations would be the file iRRAM\_functional.h (and maybe a corresponding .cc file).
+		As \irram does not yet use \ccOx, which our implementations will rely on heavily, we temporarily locate it as separate file called FUNC.cc in the folder \lq user\_programs\rq\ (or in more current, not yet released versions which miss this folder, in the folder \lq examples\rq).
 	}
-	return POLY(new_coeff);
-}
-\end{lstlisting}
-Here we first calculate the maximum of the degrees and construct a vector of the right size. Then we calculate the new coefficients as sum of the old ones. Note that the function \code{get\_coeff} saves us one case distinction: It automatically adds zeros to the end of the smaller polynomial. We pay for the convenience by the additional time consumption of adding zeros.
-
-\subsection{The class \func{FUNC}}
-
-This class is supposed to model (computable) functions which map objects of some class \code{PARAM} to objects of some other class \code{RESULT}. It will mainly consist of an shared pointer \code{algorithm} to a \code{std::function<RESULT(const PARAM\&)>} we will refer to as the algorithm of the function. Since \code{algorithm} will be passed on, if a new function is created from existing ones, it will point to a constant. Changing the algorithm will be done by creating a new function and reassigning \code{algorithm}. If the algorithm is not used by any other function, it will automatically be removed. We remark that, for improved syntax, the class \func{FUNC} is a template specialization (compare to the end of \cref{sec: std::functions}).
-\begin{lstlisting}
-template<class PARAM, class RESULT>
-class FUNC<RESULT(PARAM)> {
-	// members:
-		protected:
-			shared_ptr<const function<RESULT(const PARAM&)> algorithm;
-	// constructors:
-		public:
-			FUNC(const alg_func<PARAM, RESULT>& f);
-		protected:
-			FUNC();
-	// standard operators:
-		public:
-			FUNC& operator = (const FUNC<RESULT(PARAM)>&);
-			FUNC operator = (const function<RESULT(PARAM)>&);
-			friend FUNC<RESULT(PARAM)> operator - <> (const FUNC<RESULT(PARAM)>&);
-			/*...*/
-			friend FUNC<RESULT(PARAM)> operator - <> (const FUNC<RESULT(PARAM)>&,const FUNC<RESULT(PARAM)>&);
-			template<class PAR>
-			FUNC<RESULT(PAR)> operator () (const FUNC<PARAM(PAR)>&);
-	// member functions:
-		public:
-			RESULT operator () (const PARAM&) const;
-};
-\end{lstlisting}
-We will first discuss the general purpose of the components of this class, and then address some of the key implementations.
-\begin{description}
-\item[\code{members}:] In line 5 the main component of the class can be found: The shard pointer to the algorithm of the function.
-\item[\code{constructors}:] There are two main constructors: The one listed in line 8 will construct a \func{FUNC} from an algorithm. There is an empty constructor in line 10. This constructor is protected, since a FUNC without an algorithm is pretty much useless. But it might be convenient to have an empty constructor accessible for the derived classes.
-\item[\code{standard operators}:] All the standard operators will be overloaded for \func{FUNC}s. For improved symmetry the operators are external and thus represented by friend templates in the class definition. The composition is a exception to this rule: Since it is not possible to define new operators, the composition (line 22) will have the syntax $f(g)$ instead of $f\circ g$. This requires it to be a member of \func{FUNC}, since the operator \code{()} has to be.
-\item[\code{member functions}:] The only member function is the evaluation, which should be self-explanatory.
-\end{description}
-
-The implementations of this class are very straight forward. We will only take a look at the composition, as an example of how to combine shared pointers to \code{std::function}s and the \cc lambda calculus. For readability we will use the abbreviation \code{alg\_ptr<PARAM, RESULT>} for \code{shared\_ptr<const function<RESULT(const PARAM\&)>}:
-\begin{lstlisting}
-template<class PARAM, class RESULT>
-template<class PAR>
-FUNC<RESULT(PAR)> FUNC<RESULT(PARAM)>::operator () (
-	const FUNC<PARAM(PAR)>& f
-) {
-	if((algorithm == NULL)||(f.algorithm == NULL))
-		return FUNC<RESULT(PAR)>();
-	alg_ptr<PARAM, RESULT> _algorithm = algorithm;
-	alg_ptr<PAR, PARAM> f_algorithm = f.algorithm;
-	alg_ptr<PAR, RESULT> new_algorithm(new const auto function(
-		[_algorithm, f_algorithm](const PAR& x) -> RESULT {
-			return (*_algorithm)((*f_algorithm)(x));
-		}
-	));
-	return FUNC<RESULT(PAR)>(new_algorithm);
-}
-\end{lstlisting}
-First we check, that both the functions have algorithms (line 6). If one of them does not, we return a function without an algorithm. Next we save the algorithms of both functions to local variables (compare the end of \cref{sec: The C++ lambda calculus}). In line 10 we define a new function via the \cc lambda calculus. The lambda expression captures the local variables we defined by copy and returns upon input the composition of the two algorithms. Since the new algorithm owns shared pointers to the algorithms of the functions to be composed, these algorithms will not be deleted before the new algorithm is destroyed. Finally in line 8 we return a function with the composition of the algorithms as algorithm.
-
-
-\subsection{The class \func{POWERSERIES}}
-
-The class \func{POWERSERIES} is supposed to model formal power series. As such it is a template in the coefficient type, abbreviated by \code{c\_t}. We want to be able to compute sums and products of power series, therefore the coefficient type needs to have an addition and an multiplication defined. More specific \code{c\_t} needs to be a unital ring in the sense, that the corresponding standard operators need to be defined (constructor from positive integers, $+$, $*$, additive inverse). 
-\begin{lstlisting}
-template<class c_t>
-class POWERSERIES {
-	// members:
-		private:
-			shared_ptr<const FUNC<c_t(const unsigned int&)>> coeff;
-	// constructors:
-		public:
-			POWERSERIES(c_t);
-			POWERSERIES(FUNC<c_t(const unsigned int&)>);
-			POWERSERIES(function<c_t(const unsigned int&)>);
-	// standard operators:
-		public:
-			POWERSERIES& operator = (const POWERSERIES<c_t>&);
-			POWERSERIES operator + (const POWERSERIES<c_t>&) const;
-			/*...*/
-			POWERSERIES operator * (const POWERSERIES<c_t>&) const;
-			POWERSERIES operator () (const POWERSERIES<c_t>&) const; 
-	// member functions:
-		public:
-			c_t get_coeff(const unsigned int&) const;
-			POLY<c_t> cut_of_at(const unsigned int&) const;
-			void derive(const unsigned int&);
-			void anti_derive(const unsigned int&);	
-\end{lstlisting}
-We describe its components:
-\begin{description}
-\item[\code{members}:] The main component of a \func{POWERSERIES} is a shared pointer to a sequence, which we represent by an object of type \func{FUNC<c\_t(const unsigned int\&)>}, that is a function from the positive integers to the coefficient type.
-\item[\code{constructors}:] There are three constructors. The first (line 9) takes an object \code{x} of the coefficient type and returns the power series with first coefficient \code{x} followed by zeros (This power series represents the constant function which always returns \code{x}). The second constructor takes what we decided to represent a sequence and returns the corresponding power series. The third one can be directly fed a \cc lambda expression.
-\item[\code{standard operators}:] The standard operators are overloaded for power series. We again emphasise, that the multiplication is the convolution and not point wise. For the composition to be well defined, the first coefficient of the inner power series needs to be zero. Since \code{c\_t} can for example be the type \ir{REAL}, for which a test of equality is not accessible, the composition will not give an warning, if the first coefficient of the inner series is not zero, but the return value will be incorrect.
-\item[\code{member functions}:] The member functions should be self explanatory.
-\end{description}
-
-The implementations of this class are very straight forward, and can easily be understood from the source code (assuming, that one has read the example implementations of the classes before) or reinvented.
-
-
-\section{A class for Taylor series}
-
-\temp{introduce abbreviations.}
-
-\subsection{The class definition}
-
-\begin{lstlisting}
-template<class ARG>
-class BASE_ANAL: public FUNC<ARG(ARG)> {
-	// members:
-		private:
-			// the parameters which determine the function:
-	  			ps_ptr coeff;
-	  			INTEGER k;
-	  			INTEGER A;
-			// additional data, stored to speed things up.
-	  			REAL effective_radius_of_convergence;
-			bool has_better_alg = false;
-			poly_ptr poly = NULL;
-			INTEGER lipschitz;
-			// alg_func_ptr<PARAM, RESULT> algorithm = NULL;
-	// constructors:
-		public:
-			BASE_ANAL();
-			BASE_ANAL(REAL z);
-			BASE_ANAL(
-			const ps& _coeff,
-			const INTEGER& _k,
-			const INTEGER& _A
-		);
-		BASE_ANAL(const POLY<REAL>&);
-	// member functions:
-		public:
-			POLY<REAL> cut_of_at(const unsigned int&) const;
-			ARG operator () (const ARG&) const;
-			virtual void derive(unsigned int);
-			virtual void anti_derive(unsigned int);
-			void has_algorithm(const alg_func<ARG, ARG>&);
-			void restore_alg();
-			void show_info() const;
-		protected:
-			virtual void print(iRRAM::orstream&) const;
-			virtual void print(int precision) const;
- 	// standard operators:
-		public:
-			BASE_ANAL<ARG>& operator = (const BASE_ANAL<ARG>& f);
-			friend BASE_ANAL<ARG>& operator += (const BASE_ANAL<ARG>&);
-			...
-			friend BASE_ANAL<ARG> operator *<> (
-				const BASE_ANAL<ARG>&,
-				constBASE_ANAL<ARG>&
-			);
-			template<class PAR>
-			BASE_ANAL<ARG> operator () (const BASE_ANAL<ARG>&);
-  	// friends classes:
-   		template<class>
-   		friend class POLY;
-};
-\end{lstlisting}
-
-\subsection{The evaluation}
-
-\section{Some additions}
-
-\subsection{Output}
-
-\subsection{Additional constructors}
-
-\subsection{The class \code{coeff\_fetcher}}
-
-The class \code{coeff\_fetcher} is a helper class to enable caching of the coefficient values in \func{POWERSERIES} that also works if the \func{POWERSERIES} is declared a constant. Since the class \code{coeff\_fetcher} is only a helper class and should not be available to the user and is put in a anonymous namespace.
-
-To explain the use of the class \code{coeff\_fetcher}, consider the product \code{P*Q} of two power series \code{P} and \code{Q}. Each time we call \code{(P*Q).get\_coeff(n)}, the convolution of the power series is calculated, which involves \code{n} multiplications and \code{n} additions. There are cases, where the same coefficient is needed multiple times, for example if we want to evaluate the powers \code{P}$^i$ of some power series. In this case it would be more efficient, to remember the coefficients and not to recompute them each time.
-
-The above can be implemented by saving a vector \code{known\_coeffs} of pointers to the coefficient type: Each time some, say the \code{n}-th, coefficient is requested, the function \code{get\_coeff} will check, whether \code{known\_coeffs[n]} is defined and not the \NULL. If it is, it will return the value pointed to. If it is not, it will calculate the value and set \code{known\_coeffs[n]} to point to a coefficient type of the result value.
-
-Thus far, this could be implemented in the class \func{POWERSERIES} itself. There is one problem: It is often reasonable to work with constant power series (for example the power series underlying a \func{BASE\_ANALYTIC} should be constant for the exact same reasons the algorithm of a \func{FUNC} and the sequence of a \func{POWERSERIES} is). But in this case, the vector \code{known\_coeffs}, as a member of a constant object, would also be constant. To avoid this, the vector will be stored in the external class \func{coeff\_fetcher}, and be referenced in \func{POWERSERIES} only by pointer.
-
-The declaration of the class realizing this looks as follows:
-\begin{lstlisting}
-template<class c_t>
-class coeff_fetcher {
-	// members:
-		private:
-			vector<c_t*> known_coeffs;
-			POWERSERIES<c_t>* powerseries;
-	// con- and destructors:
-		public:
-			coeff_fetcher(POWERSERIES<c_t>*);
-			~coeff_fetcher();
-	// member functions:
-		public:
-			c_t get_coeff(unsigned int n);
-			void reset();
-	};
-\end{lstlisting}
-We briefly discuss the components:
-\begin{description}
-\item[\code{members}:] The member \code{known\_coeffs} will, as discussed before, hold pointers to the already evaluated coefficients. Of course the \code{coeff\_fetcher} will have to know, which power series to get the values from. Thus there is an additional member: A pointer to the said power series.
-\item[\code{con- and destructors}:] The only constructor will construct a \code{coeff\_fetcher} to a power series. The location of said power series is handed to the constructor as a pointer. Since the vector \code{known\_coeffs} does hold pointers which will have to be deleted we need to implement a destructor. This destructor will simply call the function \code{restore} described below.
-\item[\code{member functions}:] Of course there is a member function \code{get\_coeff} which fetches a coefficient. This is done as depicted above. There is another member function \code{reset} that resets the vector \code{known\_coeffs} to an empty vector. Therefore it will first delete all the contained pointers and then reallocate the vector. This is for the case that retaining the coefficients leads to intolerable memory consumption.
-\end{description}
-The implementations are not noteworthy.
-
-Also we need to add some lines to the class declaration of \func{POWERSERIES<c\_t>}. Most importantly:
-\begin{lstlisting}
-coeff_fetcher<c_t>* get_coeffs = new coeff_fetcher<c_t>(this);
-\end{lstlisting}
-which creates, upon construction of a power series, a appendant \code{coeff\_fetcher}. In the member function \code{get\_coeff(n)}, we will then replace the call \code{(*coeff)[n]} by \code{get\_coeffs.get\_coeff(n)}. Secondly, \code{coeff\_fetcher} will have to be declared a friend of \func{POWERSERIES} in order to be able to access the private member \code{coeff}. And finally, the class \func{POWERSERIES} will need an explicit destructor which deletes the associated \code{coeff\_fetcher}.
-
-We end the section with a remark concerning a possible issue with the constructors. A copy constructor is a constructor of type \code{coeff\_fetcher(const coeff\_fetcher<coeff\_type>\&)}. Since this constructor is essential for basic manipulations (for example initialisations) a default copy constructor will be declared by the compiler, if none is declared by the programmer. This default copy constructor will simply copy the object, and will cause problems if used: For assume that a power series is declared and initialized from an existing one
-\begin{lstlisting}
-POWERSERIES<REAL> exp_pwr([](const unsigned int& n) -> REAL {
-	return 1/REAL(faculty(n));
-});
-POWERSERIES<REAL> P = exp_pwr;
-\end{lstlisting}
-Since the default copy constructor will simply copy any member, \code{P} will also hold a pointer to the \code{coeff\_fetcher} which \code{exp\_pwr} uses. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. One might assume, that this problem is solved by the template for a copy constructor we introduced in \cref{sec: Additional constructors}, but it is not: a template will not be accepted as a definition of a copy constructor. The compiler will deliver a default copy constructor, and since this default copy constructor is a better fit for the type than the template, it will also be used. To resolve this, we have to add another constructor.
-
-\subsection{\temp{Possible future extensions}}
-
-It is clear, that this whole chapter should be written in red. For readability we restrain the colouration to the heading.
-\newpage
+	
+	\include{cpp11}
+	\include{taylor_series}
+	\include{additions}
 
 \bibliography{mybib}{}
 \bibliographystyle{plain}

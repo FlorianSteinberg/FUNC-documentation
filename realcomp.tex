@@ -1,0 +1,36 @@
+%!TEX root = doc.tex
+\section{Real computability}
+
+	The next two sections introduce some theoretical background. It is inevitable that there is some repetition of material the reader is already familiar with. For the first reading we advise, that these chapters should be skipped and be reverted to, when they are needed (if this is the case at all). There will be cross references to make this bearable.
+
+	At first sight, it might seem strange, that such an excessive amount of theory is needed for an implementation which seems straight forward from the content of the preceding section. But there are two reasons we chose to take such an extent of theory into consideration anyway: Firstly it should be possible to extend this code to more general constructions, for example Analytic functions on closed subsets Intervals or even the Gevrey-classes discussed in the later chapters of \cite{gevrey}, and secondly aligning the code according to the theory turned out make orientation a lot easier.
+
+	Of course there are many other notions of complexity, which do not turn out to be equivalent to those introduced above. Some examples can be found in \cref{}
+
+	\subsection{Representations, a reprise}
+
+		Recall that the space $\can := \{0,1\}^{\NN} \subseteq \NN^{\NN}$ is called cantor space and that an element $w=(w_1, w_2, \ldots) \in \can$ is called computable, if there is a Turing-machine returning $w_n$ upon input of $n$ (that is, if $w$ is computable as function from $\NN$ to $\NN$). Furthermore a function $f:\can\to \can$ is called computable, if there is a oracle Turing-machine, returning $f(w)_n$ upon input of $n$, if granted oracle access to $w$ (as function).
+
+		Recall that a representation $\rho$ of a set $X$ is a partial surjective mapping from cantor space to $X$. In this case, given $x\in X$, the elements of $\rho^{-1}(x)$ are called \emph{names} of $x$. Given representations $\rho_i$ of sets $X_i$ ($i\in \NN$) it is possible to construct a representation $\prod_{i\in \NN} \rho_i$ of $\prod_{i\in \NN} X_i$ (using some computable, bijective function $\NN\times\NN\to\NN$), and also a representation $\rho_1 \times \rho_2$ of $X_1 \times X_2$ (by interleaving the names). If $\rho$ is a representation of a set $X$ the pair $(X,\rho)$ is called a represented space and sometimes simply denoted by $X$, an element $x$ of a represented space $(X,\rho)$ is called $\rho$-\emph{computable}, if it has a computable name.
+
+		If $(Y,\nu)$ is another represented space, a function $f:X\to Y$ is called $\rho\to\nu$-computable, if there is a computable realizer, that is a computable function $F:\can\to\can$ such that the following diagram is commutative:
+		\[ \begin{xy}
+		\xymatrix{X\ar[r]^f & Y \\ \can \ar[r]_F\ar[u]^\rho & \can \ar[u]_\nu}
+		\end{xy}. \]
+		It is well known, that if topologies are given on $X$ and $Y$, and if the representations are well adjusted with respect to these topology, this notion of computability implies continuity.
+
+		When represented spaces $X$ and $Y$ are given, it is possible to specify a representation of $C(X,Y)$ that renders exactly the computable functions computable. For $X=[0,1]$ another representation exists: One can represent a continuous function by (a suitable encoding of) a sequence of Weierstraß-polynomials approximating the function uniformly. That this representation also leads to the same notion of computability is not obvious but true.
+
+	\subsection{Standard representations}\label{sec: Standard representations}
+
+		The standard representation $\rhody$ of $\RR$ is defined as follows: $\rhody(w) = x$ if and only if $w$ encodes a sequence $z_n$ of integers, such that $\left|x - \frac{z_n}{2^{n+1}}\right| \leq 2^n$. The standard representation of $\CC \cong \RR^2$ is $\rho^2_{\mathrm{dy}} = \rhody \times \rhody$. $\rhody$-computability coincides with the standard notion of computability of real numbers (the same is true for complex numbers).
+
+		We can get a representation $\rhody^{2\omega}$ of our space $C^\omega_1$, by naming $f$ the same as the sequence of its Taylor coefficients $(a_n)_{n\in \NN} \in \CC^\omega = \prod_{i\in \NN}\CC$. Now we can reword the comments from the beginning of \cref{sec: Analytic functions and computability}: The function
+		\[ \mathrm{ev}: C^\omega_1\times \CC \to \CC, ~ (f,x) \mapsto f(x) \]
+		is not $\rho^{2\omega}_{\mathrm{dy}}\times \rho^2_{\mathrm{dy}}\to\rho^2_{\mathrm{dy}}$-computable. We can fix this by considering a slightly adjusted representation $\pi$, that will precede a $\rho^{2\omega}_{\mathrm{dy}}$ name of a function $f$ by two integers $k$ and $A$ as described in \cref{sec: The constants k and A} above (we skipped some technical details here. For example $k$ should be encoded in unary and $A$ in binary). This adaptation renders evaluation computable.
+
+	\subsection{Complexity of reals}\label{sec: Complexity of reals}
+
+		Given a representation $\rho$ of a set $X$, the following notion of complexity suggests itself: Call an Element $x$ of $X$ computable in time $t:\NN \to \NN$, if there exists a Turing-machine computing some name of $x$ in this time. This approach has the advantage of working in the most general setting, but for more concrete representations there often is a more natural notion of complexity.
+
+		For example consider the the standard representation $\rhody$ of the real numbers: One could also define the complexity of $x$ by using Turing-machines $\Mdy$ returning (encodings of) the Integers $z_n$ such that $|x-\frac{z_n}{2^{n+1}}|\leq 2^n$, instead of the digits of their encoding. It is not difficult to see, that one can obtain a Turing-machine of the former kind from one of the latter without increasing the running time by more than a polynomial factor and vice versa. Thus both procedures fortunately lead to the same class of polynomial time computable real numbers.

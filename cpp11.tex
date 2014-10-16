@@ -1,0 +1,109 @@
+%!TEX root = doc.tex
+\section{Tools provided by the \ccOx standard template library}
+
+In this section we will introduce those tools the \ccOx standard template library provides, which we will use extensively. The information presented was gathered from various web pages. Some of the most frequented sites were \cite{cppreference} and \cite{cplusplus}, many of the discussions on the site \cite{stackoverflow} were very helpful. Last but not least, Carsten Rösnick was of great help by hinting at what to look for.
+
+\cc provides four kinds of functional objects: functions, member functions, function pointer and member function pointer. Since the first two are very common, we assume the reader is familiar with them. However, it is important to note that a function pointer can only point at functions that where created outside of the main program. This makes it impossible to dynamically create new functions when needed, which is a serious shortcoming for us, since we want to be able to add and multiply functions.
+
+Member function pointer do actually solve this problem, since classes, and with them their member functions, can be dynamically created and destroyed. But using member functions to achieve the flexibility we desire would be very involved, luckily for us \ccOx added improved syntax for exactly this. In the following sections review these tools.
+
+\subsection{\code{std::function}s}\label{sec: std::functions}
+
+The std::function template is a general-purpose polymorphic function wrapper (according to \cite{cppreference}). We will find \code{std::function}s to be highly useful. But it will be not until we learn about the \cc lambda calculus, that we can grasp their whole potential. Thus the description in this chapter might appear somewhat unspectacular. A \code{std::function} can be defined by
+\begin{lstlisting}
+std::function<RESULT(PARAM)> f;
+\end{lstlisting}
+
+A std::function can be evaluated like a function, and defined from a function pointer, as the following short example shows:
+\begin{lstlisting}
+#include <iostream>
+#include <functional>
+
+using std::function;
+
+double f(int i) {
+	return double(i);
+}
+
+int main()
+{
+	function<double(int)> g = f;
+	std::cout << g(4) << std::endl;
+	return 0;
+}
+\end{lstlisting}
+
+The \code{std::function} can do a lot more than regular functions though. For example: If \code{f} is a \code{std::function<RESULT(PARAM1, PARAM2)>} of two arguments, we can define a \code{std::function<RESULT(PARAM2)>} \code{g} by setting the first parameter to a fixed value (say \code x) using the function \code{std::bind}:
+\begin{lstlisting}
+function<RESULT(PARAM2)> g = bind(f, x, std::placeholders::_1);
+\end{lstlisting}
+To achieve something similar with regular function pointers is complicated (though it is possible). We will see that some of those possibilities hold risks, since \irram might not expect to encounter a function, containing real numbers that are not handed to it as an parameter.
+
+The syntax \code{function<RESULT(PARAM)>} of \code{std::function}s seems nicer than the \ir{FUNCTION<PARAM, RESULT>} we have seen before. It is also more convenient, since confusing parameter and result type gets a lot harder. The former syntax is implemented by a template specialisation. The definition of looks like this:
+\begin{lstlisting}
+template<class T>
+class function {};
+
+template<class T, class S>
+class function<T(S)> {/*...*/};
+\end{lstlisting}
+Here the first two lines define an empty template class, then lines four and five specialize the definition in the case, that the template argument is of a specific form. Namely a string of the form T(S), where T and S are some arbitrary types. We will use this trick to also improve the syntax of our function type.
+
+\code{std::function}s are in many respects superior to \cc functions, but they lack one thing functions do have: the possibility to be made templates.
+
+
+\subsection{The \cc lambda calculus}\label{sec: The C++ lambda calculus}
+
+One of the main sources for \code{std::functions} is the \cc lambda calculus. A lambda expression in \cc is of the form
+\begin{lstlisting}
+[/*captures*/](/*parameters*/) -> /*output_type*/ {/*algorithm*/};
+\end{lstlisting}
+Where the commented parts are to be replaced as follows:
+\begin{description}
+\item[\textcolor{commentgray}{\code{/*captures*/}}] is to be replaced by a list of variables of local scope, that are needed by the algorithm but supposed to appear as parameters of the function (those are actually what mathematicians mean, when they say \lq parameters\rq). A variable occurring in this list will be called captured (by the lambda function). Global variables need not be captured, since thy can be accessed anyway. Variables may be captured by copy or, if they are preceded by an \lq\code{\&}\rq, by reference.
+\item[\textcolor{commentgray}{\code{/*parameters*/}}] is to be replaced by the list of parameters of the function to be constructed.
+\item[\textcolor{commentgray}{\code{/*output\_type*/}}] is to be replaced by the output type of the function to be constructed (if the value that follows the return command is not of this type, a implicit type conversion will be attempted). This part (together with the \lq\code{->}\rq) can be omitted if the output type will be clear from the context.
+\item[\textcolor{commentgray}{\code{/*algorithm*/}}] is to be replaced by the algorithm calculating the return value from the parameters and the captured variables.
+\end{description}
+an easy example of a definition of a \code{std::function} via the \cc lambda calculus could look like this:
+\begin{lstlisting}
+int i = 5;
+std::function f<double(int)> = [i](const int& n) {i*log(n);};
+\end{lstlisting}
+Here the output type was omitted, since it is specified in the \code{std::function}.
+
+We remark, that members can not be captured directly: if \code c is an object of an class \code C, which has a member k of type T, then
+\begin{lstlisting}
+[c.k]() -> T {return c.k;};
+\end{lstlisting}
+will not work. The same is true if we for example try to capture \code k in the scope of the class definition.
+
+The reason is as follows: Assume the class C has some member function f changing the value of k. In this case
+\begin{lstlisting}
+[&c, c.k]() -> T {c.f(); return c.k;};
+\end{lstlisting}
+would be ambiguous, since c.k could mean both the field of the object c captured by reference, which has the new value, or the member c.k, which was captured by copy before the change was made and therefore should have the old value. The same ambiguousness arises, when a member is captured in the scope of the class definition, since the \code{this} pointer may also be captured.
+
+Thus we will have to first copy the member to a local variable, then capture it.
+
+\subsection{\code{std::shared\_ptr}s}
+
+A shared pointer is an object consisting of an pointer (to an object of specified type) and a pointer to an reference counter. Each time the shared pointer is copied the reference counter will be increased. If a shared pointer is destroyed, it decreases the reference counter and checks if it is zero, and if it is, it destroys the object it is pointing to.
+
+Shared pointers are very useful for treelike ownership relations: If one object is used by multiple other objects, each of the latter can, instead of an pointer or a copy, to the former hold a shared pointer. This way it is guaranteed, that we neither have useless copies, nor memory leaks because no one feels responsible for destroying.
+
+The \code{std::shared\_ptr} can be dereferenced by a preceding $*$, just as a regular pointer, can be constructed from regular pointers and compared to the \NULL. Here is an short example:
+
+\begin{lstlisting}
+double* ptr = new double(4.5);
+std::shared_ptr<double> s_ptr(ptr);
+cout << *s_ptr << endl;
+\end{lstlisting}
+returns \lq 4.5\rq.
+
+There are two main sources of errors when handling shared pointers:
+\begin{itemize}
+\item Multiple shared pointers are constructed from the same pointer: In this case each shared pointer keeps its own reference counter. If the first of those counters hits zero, the object will be destroyed. If now a shared pointer following an other reference counter tries to access the object, there will be an error.
+\item Circular ownership relations: for simplicity lets have a look at the case of two lonely shared pointers pointing at each other. Each of the pointers has a reference counter which is one (since they are lonely). now assume we destroy one of them. This will decrease the corresponding reference counter and, since the reference count will hit zero, destroy the other shared pointer. This in turn will decrease its reference counter, which will also hit zero. Therefore it will attempt to destroy the first shared pointer. Which will lead to an error, since it has already been deleted.
+\end{itemize}
+To avoid the first of these mistakes and memory leaks, we will try to use new exclusively in the initialisation of \code{shared\_ptr}s.

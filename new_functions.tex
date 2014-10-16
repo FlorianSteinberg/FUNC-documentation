@@ -1,0 +1,162 @@
+\section{Some classes of functions and similar objects}
+
+Before we talk about the class of Taylor series we are aiming to implement, we will introduce two more general classes (and one more restrictive). These classes are convenient for us, since a lot of code, which would otherwise make the class of Taylor series huge, can be \lq exported\rq. This improves code readability. Of course we also hope that these classes might proof useful on their own.
+
+Before we take a closer look at the individual classes, we give a short overview:
+\begin{description}
+\item[\func{POLY<coeff\_type>}] will be a minimalistic class for polynomials with coefficients of type \code{coeff\_type}.
+\item[\func{FUNC<RESULT(PARAM)>}] will be a new class for functions. Its functionalities will be very similar to those of \ir{FUCNTION<PARAM, RESULT>}, but the implementation will be somewhat different: It will heavily be relying on the tools provided by the \ccOx standard template library.
+\item[\func{POWERSERIES<coeff\_type>}] will implement formal power series. This is, functions from the integers to objects of type \code{coeff\_type} but with the convolution replacing the point wise product and the function \code{get\_coeff} to avoid the operator \code{()}, which in this case might be ambiguous, since it could mean both the evaluation as function from the integers to \code{coeff\_type} or analytic function. Also a formal derivative and anti derivative will be implemented.
+\end{description}
+
+There will be one additional helper class \func{coeff\_fetcher<coeff\_type>}, to improve the speed at which the coefficients of \func{POWERSERIES} can be evaluated.
+
+To keep the class definitions presented in the following subsections readable, they might differ slightly from those, that can be found in the code. \temp{Some of the details left out will be addressed in later sections.}
+
+\subsection{The class \func{POLY}}
+
+This class is supposed to model polynomials with coefficients from some class \code{coeff\_type}. Its main component is a shared pointer named \code{coeff}, which points to a constant \code{std::vector<coeff\_type>}. The vector is a constant, so will not have to copy it if we copy the polynomial. We will just copy the shared pointer. If we need to change the coefficients, we will create a new vector and reassign the shared pointer. If the polynomial was the only one referencing the former vector, this vector will be automatically deleted. The class definition of \code{POLY} looks similar to this:
+
+\begin{lstlisting}
+template<class coeff_type>
+class POLY {
+	// members:
+		private:
+			shared_ptr<const vector<coeff_type>> coeff;
+	// constructors:
+		public:
+			POLY();
+			template<class T>
+			POLY(const T&);
+			POLY(vector<coeff_type>);
+	// standard operators:
+		public:
+			POLY& operator = (const POLY<coeff_type>&);
+			friend POLY operator - (const POLY<coeff_type>&);
+			/* ... */
+			POLY& operator *= (const POLY<coeff_type>&);
+	// member functions:
+		public:
+			coeff_type get_coeff(const unsigned int n) const;
+			unsigned int get_degree() const;
+			template<class ARG>
+			ARG operator () (const ARG&);
+};
+\end{lstlisting}
+
+We briefly discuss the general purpose of the components of this class, before we address some of the key implementations.
+\begin{description}
+\item[\code{members}:] The one existent member has already been discussed above.
+\item[\code{constructors}:] In line 8 the empty constructor can be found, it will construct the zero polynomial. Then there is a constructor template in line 9 and 10, which will attempt to convert any given type \code{T} to \code{coeff\_type} and then construct the polynomial having this value as first and only non-zero coefficient. Finally in line 11 we find a constructor, that constructs a polynomial from a given list of coefficients. We refrain from handing the vector over as a reference to allow syntax such as \code{POLY<REAL> P(\{1,2,pi()\})}, where \code{\{1,2,pi()\}} as a temporary object can not be referenced.
+\item[\code{standard operators}:] There is no complete list of the operators above, so we give one here: The operators \code{=} (copy constructor), \code{-} (additive inverse), \code{+}, \code{-} (substraction), \code{*}, \code{+=} and \code{*=} are overloaded for polynomials.
+\item[\code{member functions}:] The function \code{get\_degree()} will return the length of the coefficient vector. The highest coefficient might be zero, so we do not really get the degree, but a upper bound for it. Since we can not check whether a coefficient is zero in general, this is not avoidable. \code{get\_coeff(n)} will return the \code{n}-th coefficient, if \code{n} is bigger than the coefficient vector is long, it will return zero. Another option would be to issue a warning or even an error, but the chosen approach simplifies the implementations of the standard operators. line 22 and 23 are taken by an evaluation operator. Since polynomials are often evaluated in types more general than \code{coeff\_type} (for example Polynomials with integer coefficients are regularly taken as functions on the real or complex numbers) this operator is a template. Of course the argument \code{ARG} needs to provide an addition and multiplication. Additionally \code{ARG} needs to have an multiplication with \code{coeff\_type} from the right (this is in particular the case if \code{ARG} is constructible from \code{coeff\_type}).
+\end{description}
+
+The implementation of the constructors are straight forward. So are most of the implementations of the standard operators. As example we take a closer look at the addition:
+\begin{lstlisting}
+POLY operator + (const POLY<coeff_type>& P) {
+	unsigned int max_degree = max(get_degree(), P.get_degree());
+	vector<coeff_type> new_coeff(max_degree + 1);
+	for (unsigned int i = 0; i <= max_degree; i++) {
+		new_coeff[i] = get_coeff(i) + P.get_coeff(i);
+	}
+	return POLY(new_coeff);
+}
+\end{lstlisting}
+Here we first calculate the maximum of the degrees and construct a vector of the right size. Then we calculate the new coefficients as sum of the old ones. Note that the function \code{get\_coeff} saves us one case distinction: It automatically adds zeros to the end of the smaller polynomial. We pay for the convenience by the additional time consumption of adding zeros.
+
+\subsection{The class \func{FUNC}}
+
+This class is supposed to model (computable) functions which map objects of some class \code{PARAM} to objects of some other class \code{RESULT}. It will mainly consist of an shared pointer \code{algorithm} to a \code{std::function<RESULT(const PARAM\&)>} we will refer to as the algorithm of the function. Since \code{algorithm} will be passed on, if a new function is created from existing ones, its target will be a constant. Changing the algorithm will be done by creating a new algorithm (i.e. constant \code{std::function}) and reassigning \code{algorithm}. If the old algorithm is not used by any other function, it will automatically be removed. We remark that, for improved syntax, the class \func{FUNC} is a template specialization (compare to the end of \cref{sec: std::functions}).
+\begin{lstlisting}
+template<class PARAM, class RESULT>
+class FUNC<RESULT(PARAM)> {
+	// members:
+		protected:
+			shared_ptr<const function<RESULT(const PARAM&)> algorithm;
+	// constructors:
+		public:
+			FUNC(const alg_func<PARAM, RESULT>& f);
+		protected:
+			FUNC();
+	// standard operators:
+		public:
+			FUNC& operator = (const FUNC<RESULT(PARAM)>&);
+			FUNC operator = (const function<RESULT(PARAM)>&);
+			friend FUNC<RESULT(PARAM)> operator - <> (const FUNC<RESULT(PARAM)>&);
+			/*...*/
+			friend FUNC<RESULT(PARAM)> operator - <> (const FUNC<RESULT(PARAM)>&,const FUNC<RESULT(PARAM)>&);
+			template<class PAR>
+			FUNC<RESULT(PAR)> operator () (const FUNC<PARAM(PAR)>&);
+	// member functions:
+		public:
+			RESULT operator () (const PARAM&) const;
+};
+\end{lstlisting}
+We will first discuss the general purpose of the components of this class, and then address some of the key implementations.
+\begin{description}
+\item[\code{members}:] In line 5 the main component of the class can be found: The shard pointer to the algorithm of the function.
+\item[\code{constructors}:] There are two main constructors: The one listed in line 8 will construct a \func{FUNC} from an algorithm. There is an empty constructor in line 10. This constructor is protected, since a FUNC without an algorithm is pretty much useless. But it might be convenient to have an empty constructor accessible for the derived classes.
+\item[\code{standard operators}:] All the standard operators will be overloaded for \func{FUNC}s. For improved symmetry the operators are external and thus represented by friend templates in the class definition. The composition is a exception to this rule: Since it is not possible to define new operators, the composition (line 22) will have the syntax $f(g)$ instead of $f\circ g$. This requires it to be a member of \func{FUNC}, since the operator \code{()} has to be.
+\item[\code{member functions}:] The only member function is the evaluation, which should be self-explanatory.
+\end{description}
+
+The implementations of this class are very straight forward. We will only take a look at the composition, as an example of how to combine shared pointers to \code{std::function}s and the \cc lambda calculus. For readability we will use the abbreviation \code{alg\_ptr<PARAM, RESULT>} for \code{shared\_ptr<const function<RESULT(const PARAM\&)>}:
+\begin{lstlisting}
+template<class PARAM, class RESULT>
+template<class PAR>
+FUNC<RESULT(PAR)> FUNC<RESULT(PARAM)>::operator () (
+	const FUNC<PARAM(PAR)>& f
+) {
+	if((algorithm == NULL)||(f.algorithm == NULL))
+		return FUNC<RESULT(PAR)>();
+	alg_ptr<PARAM, RESULT> _algorithm = algorithm;
+	alg_ptr<PAR, PARAM> f_algorithm = f.algorithm;
+	alg_ptr<PAR, RESULT> new_algorithm(new const auto function(
+		[_algorithm, f_algorithm](const PAR& x) -> RESULT {
+			return (*_algorithm)((*f_algorithm)(x));
+		}
+	));
+	return FUNC<RESULT(PAR)>(new_algorithm);
+}
+\end{lstlisting}
+First we check, that both the functions have algorithms (line 6). If one of them does not, we return a function without an algorithm. Next we save the algorithms of both functions to local variables (compare the end of \cref{sec: The C++ lambda calculus}). In line 10 we define a new function via the \cc lambda calculus. The lambda expression captures the local variables we defined by copy and returns upon input the composition of the two algorithms. Since the new algorithm owns shared pointers to the algorithms of the functions to be composed, these algorithms will not be deleted before the new algorithm is destroyed. Finally in line 8 we return a function with the composition of the algorithms as algorithm.
+
+
+\subsection{The class \func{POWERSERIES}}
+
+The class \func{POWERSERIES} is supposed to model formal power series. As such it is a template in the coefficient type, abbreviated by \code{c\_t}. We want to be able to compute sums and products of power series, therefore the coefficient type needs to have an addition and an multiplication defined. More specific \code{c\_t} needs to be a unital ring in the sense, that the corresponding standard operators need to be defined (constructor from positive integers, $+$, $*$, additive inverse). 
+\begin{lstlisting}
+template<class c_t>
+class POWERSERIES {
+	// members:
+		private:
+			shared_ptr<const FUNC<c_t(const unsigned int&)>> coeff;
+	// constructors:
+		public:
+			POWERSERIES(c_t);
+			POWERSERIES(FUNC<c_t(const unsigned int&)>);
+			POWERSERIES(function<c_t(const unsigned int&)>);
+	// standard operators:
+		public:
+			POWERSERIES& operator = (const POWERSERIES<c_t>&);
+			POWERSERIES operator + (const POWERSERIES<c_t>&) const;
+			/*...*/
+			POWERSERIES operator * (const POWERSERIES<c_t>&) const;
+			POWERSERIES operator () (const POWERSERIES<c_t>&) const; 
+	// member functions:
+		public:
+			c_t get_coeff(const unsigned int&) const;
+			POLY<c_t> cut_of_at(const unsigned int&) const;
+			void derive(const unsigned int&);
+			void anti_derive(const unsigned int&);	
+\end{lstlisting}
+We describe its components:
+\begin{description}
+\item[\code{members}:] The main component of a \func{POWERSERIES} is a shared pointer to a sequence, which we represent by an object of type \func{FUNC<c\_t(const unsigned int\&)>}, that is a function from the positive integers to the coefficient type.
+\item[\code{constructors}:] There are three constructors. The first (line 9) takes an object \code{x} of the coefficient type and returns the power series with first coefficient \code{x} followed by zeros (This power series represents the constant function which always returns \code{x}). The second constructor takes what we decided to represent a sequence and returns the corresponding power series. The third one can be directly fed a \cc lambda expression.
+\item[\code{standard operators}:] The standard operators are overloaded for power series. We again emphasise, that the multiplication is the convolution and not point wise. For the composition to be well defined, the first coefficient of the inner power series needs to be zero. Since \code{c\_t} can for example be the type \ir{REAL}, for which a test of equality is not accessible, the composition will not give an warning, if the first coefficient of the inner series is not zero, but the return value will be incorrect.
+\item[\code{member functions}:] The member functions should be self explanatory.
+\end{description}
+
+The implementations of this class are very straight forward, and can easily be understood from the source code (assuming, that one has read the example implementations of the classes before) or reinvented.

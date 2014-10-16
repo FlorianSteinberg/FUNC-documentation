@@ -1,0 +1,61 @@
+\section{A class for Taylor series}
+
+\temp{introduce abbreviations.}
+
+\subsection{The class definition}
+
+\begin{lstlisting}
+template<class ARG>
+class BASE_ANAL: public FUNC<ARG(ARG)> {
+	// members:
+		private:
+			// the parameters which determine the function:
+	  			ps_ptr coeff;
+	  			INTEGER k;
+	  			INTEGER A;
+			// additional data, stored to speed things up.
+	  			REAL effective_radius_of_convergence;
+			bool has_better_alg = false;
+			poly_ptr poly = NULL;
+			INTEGER lipschitz;
+			// alg_func_ptr<PARAM, RESULT> algorithm = NULL;
+	// constructors:
+		public:
+			BASE_ANAL();
+			BASE_ANAL(REAL z);
+			BASE_ANAL(
+			const ps& _coeff,
+			const INTEGER& _k,
+			const INTEGER& _A
+		);
+		BASE_ANAL(const POLY<REAL>&);
+	// member functions:
+		public:
+			POLY<REAL> cut_of_at(const unsigned int&) const;
+			ARG operator () (const ARG&) const;
+			virtual void derive(unsigned int);
+			virtual void anti_derive(unsigned int);
+			void has_algorithm(const alg_func<ARG, ARG>&);
+			void restore_alg();
+			void show_info() const;
+		protected:
+			virtual void print(iRRAM::orstream&) const;
+			virtual void print(int precision) const;
+ 	// standard operators:
+		public:
+			BASE_ANAL<ARG>& operator = (const BASE_ANAL<ARG>& f);
+			friend BASE_ANAL<ARG>& operator += (const BASE_ANAL<ARG>&);
+			...
+			friend BASE_ANAL<ARG> operator *<> (
+				const BASE_ANAL<ARG>&,
+				constBASE_ANAL<ARG>&
+			);
+			template<class PAR>
+			BASE_ANAL<ARG> operator () (const BASE_ANAL<ARG>&);
+  	// friends classes:
+   		template<class>
+   		friend class POLY;
+};
+\end{lstlisting}
+
+\subsection{The evaluation}

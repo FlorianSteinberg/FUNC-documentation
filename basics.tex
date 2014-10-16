@@ -1,0 +1,58 @@
+%!TEX root = doc.tex
+\section{Basic functionalities}
+
+Following the theory it might be expected that the proceeding depicted in \cref{sec: Standard representations,sec: Complexity of reals} is the most reasonable approach to implementations of real analysis. In this spirit, a real number $x$ should be represented by an algorithm $\Mdy(x)$, taking a natural number $n$ and returning an approximation, i.e. an appropriately encoded rational (or dyadic) number $x_n$ such that $|x-x_n|<2^{-n}$. It turns out that this proceeding has major drawbacks:
+\begin{enumerate}
+\item[\bf{\namedlabel{prob: P1}{(P1)}}] Each time a sum or a product of real numbers is calculated, the algorithms of the corresponding real numbers must be copied or at least referenced. This leads to a tree-like structure (more precisely a directed acyclic graph) of any program and to extensive memory consumption of some standard operations like computing the powers of some real matrix or summing up power series.
+\item[\bf{\namedlabel{prob: P2}{(P2)}}] An algorithm $P$ encoding a real number carries more information than the real number itself. If $P$ is given to a function, this function can for example also use the running time of $P$ to generate its output. This kind of functions should from a mathematical point of view not be considered computable, and can lead to pathological behavior.
+\end{enumerate}
+
+It might be suspected that \ref{prob: P1} is not significant, since the memory consumption is caused by a high number of pointers, which are tiny. However, experience shows that this does cause major problems in applications that arise in practice.
+
+\subsection{\irram: another approach}
+
+Thus the \irram chooses a different approach. Namely, it will choose a fixed precision and calculate a finite interval of size smaller than this precision from each Algorithm representing a real number. Then all the manipulations on real numbers will be carried out on these intervals instead. If a situation is encountered, where the size of these intervals is not sufficiently small anymore (for example two reals are supposed to be compared and the intervals overlap), the whole computation is restarted with a higher starting precision. The procedure of restarting the calculation is called a \emph{reiteration}. The single runs of the program with different precisions will be referred to as \emph{iterations}.
+
+% The following pictures are meant to illustrate the difference between the path of a classical computation and an \irram computation. They might be considered very \lq handwavy\rq. We will illustrate the computation by a directed tree: A vertex without outgoing edges will represent an user request, while vertices that posses some outgoing edges and $n$ ingoing edges will represent an oracle Turing-machine with $n$ oracles (this includes computable reals as the case $n=0$). Assume for a given  We will mark those oracle Turing-machines who currently allocate memory by including them in a box. A classical computation will then look as follows:
+% \begin{itemize}
+% \item iteratively evaluate each oracle Turing-machine until it is in the query state:
+% \begin{itemize}
+% \item\begin{tikzpicture}
+% \node{$f(x_1, \ldots, x_n)$};
+% \end{tikzpicture}
+% \item[\vdots]
+% \item \begin{tikzpicture}
+% \node{$f(x_1, \ldots, x_n)$};
+% \end{tikzpicture}
+% \end{itemize}
+% \item
+% \end{itemize}
+% \end{center}
+
+We hint at why this advance might not suffer the problems mentioned in the introduction of this section: A major part of \ref{prob: P2} was that the running time of an oracle is accessible (for instance by comparing time stamps before and after the query). Since any information about earlier iterations is lost, the running time of an algorithm computing a real number should not be easily accessible (of course the power of the programming language \cc makes it very difficult to assure this). The main point of \ref{prob: P1} was the dependence of sums and products of reals on the algorithms of the summands or factors. Since reals are represented by finite intervals, and the interval representing the sum of two reals can be saved without reference to the intervals representing the summands, this problem ceases to exist.
+
+At first glance, this approach seems to be very time consuming: The whole computation might be restarted repeatedly, discarding all the computations made in the earlier iterations completely. But it is well known, that this does not blow up the asymptotic complexity: More precisely, the asymptotic complexity of the whole computation and the last reiteration coincide \cite{}.
+
+Nontheless this approach has some real (but hopefully more manageable) drawbacks
+\begin{itemize}
+\item If the program includes in and output, a restart of the program will lead to doubled output. This is mainly a implementation problem and can be avoided by using the output methods provided by \irram.
+\item If on the other hand, the program asked the user for input at some point, this input will have to be memorized. Moreover: if any multivalued function is computed, it has to evaluate to the exact same value in the next run and has to be memorized. This is to avoid incoherences in output.
+\item Each time a reiteration is triggered, the whole program restarts. This means, that nearly everything (as mentioned above some things are memorized) is re-evaluated. In particular: If the program is composed of two tasks, and one of those needs a higher precision, both tasks will be carried out in this higher precision. This means, that reiterations are very expensive in terms of computation time.
+\end{itemize}
+
+The problem described in the last bullet can partially be eliminated by dividing the tasks into two sub-programs. However, as mentioned above, this does not effect the asymptotic running time, and we thus will not go into it in more detail. Instead we will go into the problem discussed in the first bullet in more detail in the oncoming section. \temp{Note, that the content of the remaining bullet is very closely related. It may or may not be addressed on its own.}
+
+Another point is, that programs for \irram are written in \cc. Since \cc is a very powerful programming language. This means, that it is often possible for the user to do things he is not really supposed to do.
+
+\subsection{Output}
+
+We did already mention, that output can be a problem and that one should use the output methods provided. \irram offers the following functions for output:
+\begin{itemize}
+\item The functions \irram::\ir{rwrite}, \irram::\ir{rwritee}.
+\item The function \irram::\ir{rfprint}.
+\item The function \irram::\ir{rshow}.
+\item Any \irram::\ir{orstream} via the overloaded \ir{<<} operators. In particular the standard one: \irram::\ir{cout}.
+\end{itemize}
+A description of how the output functions are to be used can be found in \cite[\temp{Chapter 34.8.}]{Muller2013}.
+
+We emphasize once more: It is important to acknowledge the restrictions of the \ir{orstream}s in comparision to \code{ostream}s: For example pointer adresses will not be displayed. This makes perfect sense, since adresses may vary throughout the iterations! Output of the same pointers adress might thus result in different adresses at different points of the computation. In this case the \irram takes care of the problem by not outputting pointer addresses but first casting them to \code{bool}s. \temp{A real example: If one outputs the error of some \ir{REAL} it might show values greater than one, which might not reflect the future behaviour as the very next command could be to output the REAL, which will then trigger a reiteration and increase precision. Since the output will not be revised the result can be confusing for the user.} Although these problems should be handled by \irram itself, it is clear that there will always be some ways to trick the system and it is advised to handle output with care.

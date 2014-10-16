@@ -1,0 +1,61 @@
+\section{Some additions}
+
+\subsection{Output}
+
+\subsection{Additional constructors}
+
+\subsection{The class \code{coeff\_fetcher}}
+
+The class \code{coeff\_fetcher} is a helper class to enable caching of the coefficient values in \func{POWERSERIES} that also works if the \func{POWERSERIES} is declared a constant. Since the class \code{coeff\_fetcher} is only a helper class and should not be available to the user and is put in a anonymous namespace.
+
+To explain the use of the class \code{coeff\_fetcher}, consider the product \code{P*Q} of two power series \code{P} and \code{Q}. Each time we call \code{(P*Q).get\_coeff(n)}, the convolution of the power series is calculated, which involves \code{n} multiplications and \code{n} additions. There are cases, where the same coefficient is needed multiple times, for example if we want to evaluate the powers \code{P}$^i$ of some power series. In this case it would be more efficient, to remember the coefficients and not to recompute them each time.
+
+The above can be implemented by saving a vector \code{known\_coeffs} of pointers to the coefficient type: Each time some, say the \code{n}-th, coefficient is requested, the function \code{get\_coeff} will check, whether \code{known\_coeffs[n]} is defined and not the \NULL. If it is, it will return the value pointed to. If it is not, it will calculate the value and set \code{known\_coeffs[n]} to point to a coefficient type of the result value.
+
+Thus far, this could be implemented in the class \func{POWERSERIES} itself. There is one problem: It is often reasonable to work with constant power series (for example the power series underlying a \func{BASE\_ANALYTIC} should be constant for the exact same reasons the algorithm of a \func{FUNC} and the sequence of a \func{POWERSERIES} is). But in this case, the vector \code{known\_coeffs}, as a member of a constant object, would also be constant. To avoid this, the vector will be stored in the external class \func{coeff\_fetcher}, and be referenced in \func{POWERSERIES} only by pointer.
+
+The declaration of the class realizing this looks as follows:
+\begin{lstlisting}
+template<class c_t>
+class coeff_fetcher {
+	// members:
+		private:
+			vector<c_t*> known_coeffs;
+			POWERSERIES<c_t>* powerseries;
+	// con- and destructors:
+		public:
+			coeff_fetcher(POWERSERIES<c_t>*);
+			~coeff_fetcher();
+	// member functions:
+		public:
+			c_t get_coeff(unsigned int n);
+			void reset();
+	};
+\end{lstlisting}
+We briefly discuss the components:
+\begin{description}
+\item[\code{members}:] The member \code{known\_coeffs} will, as discussed before, hold pointers to the already evaluated coefficients. Of course the \code{coeff\_fetcher} will have to know, which power series to get the values from. Thus there is an additional member: A pointer to the said power series.
+\item[\code{con- and destructors}:] The only constructor will construct a \code{coeff\_fetcher} to a power series. The location of said power series is handed to the constructor as a pointer. Since the vector \code{known\_coeffs} does hold pointers which will have to be deleted we need to implement a destructor. This destructor will simply call the function \code{restore} described below.
+\item[\code{member functions}:] Of course there is a member function \code{get\_coeff} which fetches a coefficient. This is done as depicted above. There is another member function \code{reset} that resets the vector \code{known\_coeffs} to an empty vector. Therefore it will first delete all the contained pointers and then reallocate the vector. This is for the case that retaining the coefficients leads to intolerable memory consumption.
+\end{description}
+The implementations are not noteworthy.
+
+Also we need to add some lines to the class declaration of \func{POWERSERIES<c\_t>}. Most importantly:
+\begin{lstlisting}
+coeff_fetcher<c_t>* get_coeffs = new coeff_fetcher<c_t>(this);
+\end{lstlisting}
+which creates, upon construction of a power series, a appendant \code{coeff\_fetcher}. In the member function \code{get\_coeff(n)}, we will then replace the call \code{(*coeff)[n]} by \code{get\_coeffs.get\_coeff(n)}. Secondly, \code{coeff\_fetcher} will have to be declared a friend of \func{POWERSERIES} in order to be able to access the private member \code{coeff}. And finally, the class \func{POWERSERIES} will need an explicit destructor which deletes the associated \code{coeff\_fetcher}.
+
+We end the section with a remark concerning a possible issue with the constructors. A copy constructor is a constructor of type \code{coeff\_fetcher(const coeff\_fetcher<coeff\_type>\&)}. Since this constructor is essential for basic manipulations (for example initialisations) a default copy constructor will be declared by the compiler, if none is declared by the programmer. This default copy constructor will simply copy the object, and will cause problems if used: For assume that a power series is declared and initialized from an existing one
+\begin{lstlisting}
+POWERSERIES<REAL> exp_pwr([](const unsigned int& n) -> REAL {
+	return 1/REAL(faculty(n));
+});
+POWERSERIES<REAL> P = exp_pwr;
+\end{lstlisting}
+Since the default copy constructor will simply copy any member, \code{P} will also hold a pointer to the \code{coeff\_fetcher} which \code{exp\_pwr} uses. This \code{coeff\_fetcher} is of course oblivious of this fact and will continue to read \code{exp\_pwr}s coefficients. This means, that changes in \code{P} will not result in changes in the returned coefficients, and will even cause an error if \code{exp\_pwr} is destroyed. One might assume, that this problem is solved by the template for a copy constructor we introduced in \cref{sec: Additional constructors}, but it is not: a template will not be accepted as a definition of a copy constructor. The compiler will deliver a default copy constructor, and since this default copy constructor is a better fit for the type than the template, it will also be used. To resolve this, we have to add another constructor.
+
+\subsection{\temp{Possible future extensions}}
+
+It is clear, that this whole chapter should be written in red. For readability we restrain the colouration to the heading.
+\newpage
